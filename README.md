@@ -1,3 +1,5 @@
+A little about me before reading, I AM NOT A DEVELOPER. I am a political science major who doesn't know jack about coding, I just happen to, for some reason, have, what I think to be, a solid understanding of data privacy routing and wanted to do my part to better searxng as i am a user. I vibe coded quite literally every line of this with claude code over a couple days, this is more of a proof of concept that I think some capable computer nerds can actually bring to fruition. HOWEVER, it should be acceptable to use in its current state, I even use it myself. 
+
 # Scrambler
 
 Every search engine knows two things about you: who you are and what you searched for. That combination is the product. Scrambler breaks it.
