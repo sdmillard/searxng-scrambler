@@ -1,5 +1,4 @@
-A little about me before reading, I AM NOT A DEVELOPER. I am a political science major who doesn't know jack about coding, I just happen to, for some reason, have, what I think to be, a solid understanding of data privacy routing and wanted to do my part to better searxng as I am a user. I vibe coded quite literally every line of this with claude code over a couple days, this is more of a proof of concept that I think some capable computer nerds can actually bring to fruition. HOWEVER, it should be acceptable to use in its current state, I even use it myself. 
-
+A little about me before reading, I AM NOT A DEVELOPER. I am a political science major who doesn't know jack about coding, I just happen to, for some reason, have, what I think to be, a solid understanding of data privacy routing and wanted to do my part to better searxng as I am a user. I vibe coded quite literally every line of this with claude code over a couple days, this is more of a proof of concept that I think some capable computer nerds can actually bring to fruition. HOWEVER, it should be acceptable to use in its current state, I even use it myself.
 
 # Scrambler
 
@@ -30,7 +29,7 @@ Scrambler is a local search proxy that routes your queries across multiple indep
 - **Search profiles** — save different configurations for different use cases (research, news, tech, etc.)
 - **Themes** — full visual customization including fonts, colors, backgrounds, sound effects, and loading screens
 - **Instance autopick** — automatically discovers and benchmarks healthy public instances
-- **Desktop integration** — installs as a native app on Linux with its own icon and launcher
+- **Desktop integration** — installs as a native app on Linux, macOS, and Windows with its own launcher and autostart support
 
 ---
 
@@ -50,14 +49,17 @@ sudo pacman -S tor
 
 # macOS
 brew install tor
+
+# Windows — download the Expert Bundle from https://www.torproject.org/download/tor/
+# Extract it and run tor.exe
 ```
 
 Start it and leave it running:
 
 ```bash
-sudo systemctl enable --now tor   # systemd
-# or
-tor &                              # foreground
+sudo systemctl enable --now tor   # Linux systemd
+brew services start tor           # macOS
+tor &                             # foreground (any platform)
 ```
 
 ---
@@ -150,11 +152,17 @@ Scrambler's appearance is fully themeable. The Settings page lets you customize 
 
 ---
 
-## Desktop app (Linux)
+## Desktop app
 
-To install Scrambler as a native desktop app with its own launcher and icon:
+Scrambler can install itself as a native app on Linux, macOS, and Windows. Go to **Settings → System** and use the **Desktop launcher** and **Start on login** buttons.
 
-Go to **Settings → System → Install as desktop app**. This creates a `.desktop` entry, generates an SVG icon from your current theme, and sets up a launcher script that starts the server and opens your browser — same as any other app in your application menu.
+| Platform | Launcher | Autostart |
+|---|---|---|
+| **Linux** | `.desktop` entry + SVG icon in your app menu | systemd user service |
+| **macOS** | `Scrambler.app` in `~/Applications` (Spotlight-searchable) | launchd user agent |
+| **Windows** | Shortcut in Start Menu Programs | Registry startup key |
+
+The launcher starts the server silently in the background and opens a themed loading page in your browser while it connects — no terminal needed. The app name and colors come from your current theme, so reinstall after switching themes to update it.
 
 ---
 
