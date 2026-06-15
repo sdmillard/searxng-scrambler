@@ -1,0 +1,3439 @@
+{% extends "base.html" %}
+{% block title %}Settings — {{ appearance.title }}{% endblock %}
+
+{% block extra_style %}
+<style>
+  main { max-width: 680px; padding: 28px 20px; }
+
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: var(--text); }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 14px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"],
+  textarea,
+  select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+
+  input[type="text"]:focus,
+  textarea:focus,
+  select:focus { border-color: var(--accent-dim); }
+
+  textarea {
+    resize: vertical;
+    min-height: 140px;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .instance-count {
+    font-size: 12px;
+    color: {% if instance_count > 0 %}var(--url){% else %}var(--error){% endif %};
+    margin-top: 6px;
+  }
+
+  button[type="submit"] {
+    background: var(--accent-dim);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 16px;
+    padding: 9px 20px;
+    transition: background 0.15s;
+  }
+  button[type="submit"]:hover { background: var(--accent); }
+  #settings-nav {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    z-index: 200;
+  }
+  #settings-nav-save {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    margin-top: 0;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  #settings-nav a {
+    display: block;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 5px;
+    white-space: nowrap;
+    transition: color 0.15s, background 0.15s;
+  }
+  #settings-nav a:hover { color: var(--text); background: var(--border); }
+  @media (max-width: 920px) { #settings-nav { display: none; } }
+
+  .discover-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+  }
+
+  .discover-bar select {
+    width: auto;
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+
+  button.secondary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 6px 14px;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  button.secondary:hover { border-color: var(--accent-dim); color: var(--accent); }
+  button.secondary:disabled { opacity: 0.5; cursor: default; }
+
+  .color-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+    margin-top: 10px;
+  }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .color-row input[type="color"] {
+    width: 32px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+
+  .color-row span { flex: 1; }
+
+  .preset-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    margin-bottom: 4px;
+  }
+
+  .favicon-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .favicon-row input { flex: 1; }
+
+  #favicon-preview {
+    font-size: 24px;
+    line-height: 1;
+    min-width: 32px;
+    text-align: center;
+  }
+
+  #discover-results { margin-top: 10px; }
+
+  #discover-results { overflow-x: auto; }
+
+  .discover-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-width: 760px;
+  }
+  .discover-table th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 4px 10px 6px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .discover-table td {
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .discover-table tr:last-child td { border-bottom: none; }
+  .discover-table td:first-child { width: 20px; padding-right: 6px; }
+  .discover-table .url-cell {
+    color: var(--accent);
+    font-family: "SF Mono","Fira Code",monospace;
+    font-size: 11px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tip-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tip-wrap .tip-box {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    width: 270px;
+    z-index: 200;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+  .tip-wrap:hover .tip-box { display: block; }
+
+  .autopick-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: var(--surface);
+  }
+  .autopick-count-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .autopick-count-wrap input[type="range"] {
+    width: 120px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+  #autopick-count-label {
+    color: var(--accent);
+    font-weight: 600;
+    min-width: 2ch;
+    text-align: right;
+  }
+
+  .grade-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--engine);
+    color: var(--engine-text);
+  }
+  .grade-badge.good { color: var(--url); }
+  .grade-badge.ok   { color: var(--accent); }
+  .grade-badge.bad  { color: var(--error); }
+  .bool-yes { color: var(--url); }
+  .bool-no  { color: var(--muted); }
+
+  .engine-count-cell { cursor: pointer; color: var(--accent); text-decoration: underline dotted; }
+  .engine-count-cell:hover { color: var(--text); }
+  .engine-detail-row td { padding: 6px 10px 10px 30px; background: var(--surface); }
+  .engine-tag {
+    display: inline-block;
+    font-size: 11px;
+    background: var(--engine);
+    color: var(--engine-text);
+    border-radius: 3px;
+    padding: 1px 6px;
+    margin: 2px 2px;
+  }
+  .engine-filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .engine-filter-wrap input {
+    width: 220px;
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  .themes-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 4px;
+    row-gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .theme-chip {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .theme-chip .secondary:first-child {
+    border-radius: 6px 0 0 6px;
+    border-right: none;
+  }
+
+  .theme-chip .theme-del {
+    border-radius: 0 6px 6px 0;
+    padding: 6px 9px;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  .theme-chip .theme-del:hover { color: var(--error); border-color: var(--error); }
+
+  .theme-save-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .theme-save-bar input { flex: 1; margin: 0; }
+
+  /* ── Collapsible appearance sections ── */
+  .collapse-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--border);
+    padding: 9px 0 5px;
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    transition: color 0.15s;
+  }
+  .collapse-hdr:hover { color: var(--text); }
+  .collapse-hdr .chev {
+    font-size: 10px;
+    transition: transform 0.18s;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.6;
+  }
+  .collapse-hdr.collapsed .chev { transform: rotate(-90deg); }
+  .collapse-body.collapsed { display: none; }
+
+  .cat-sort-list {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .cat-sort-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 13px;
+    color: var(--text);
+    user-select: none;
+    cursor: default;
+  }
+  .cat-sort-item:last-child { border-bottom: none; }
+  .cat-sort-item.drag-over { background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+  .cat-sort-item.dragging { opacity: 0.4; }
+  .cat-sort-item .drag-handle {
+    color: var(--muted);
+    cursor: grab;
+    font-size: 15px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .cat-sort-item .drag-handle:active { cursor: grabbing; }
+  .cat-sort-item input[type="checkbox"] { width: auto; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .cat-sort-item .cat-name { flex: 1; cursor: pointer; }
+  .cat-sort-item.unchecked .cat-name { color: var(--muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav id="settings-nav">
+  <button type="submit" form="settings-form" id="settings-nav-save">Save</button>
+  <a onclick="navTo('s-instances')">Instances</a>
+  <a onclick="navTo('s-routing')">Routing</a>
+  <a onclick="navTo('s-map')">Map</a>
+  <a onclick="navTo('s-ai')">AI</a>
+  <a onclick="navTo('s-appearance')">Appearance</a>
+  <a onclick="navTo('s-search')">Search</a>
+  <a onclick="navTo('s-system')">System</a>
+  <a onclick="navTo('s-backup')">Backup</a>
+</nav>
+<main>
+  <h2>Settings</h2>
+  <form method="post" id="settings-form">
+    <input type="hidden" name="profile_save_name" id="profile-save-name-hidden" value="">
+
+    <div class="section">
+      <h3 id="s-instances">Instances</h3>
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('instances-list')" style="margin-top:0;border-top:none">
+        Instance list <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-instances-list">
+        <label for="instances">One URL per line</label>
+        <textarea id="instances" name="instances" rows="8" spellcheck="false" autocomplete="off">{{ instances_text }}</textarea>
+        <div class="instance-count">
+          {% if instance_count == 0 %}No instances configured — add some below.
+          {% elif instance_count == 1 %}1 instance
+          {% else %}{{ instance_count }} instances{% endif %}
+        </div>
+
+        <div class="discover-bar">
+          <select id="discover-grade">
+            <option value="A+">A+ only</option>
+            <option value="A" selected>A and above</option>
+            <option value="B">B and above</option>
+            <option value="">All grades</option>
+          </select>
+          <button type="button" class="secondary" id="discover-btn" onclick="runDiscover()">Browse public instances</button>
+          <div class="autopick-wrap">
+            <div class="tip-wrap">
+              <button type="button" class="secondary" id="autopick-btn" onclick="autoPick()" style="white-space:nowrap">Auto-pick</button>
+              <div class="tip-box">
+                <strong style="color:var(--accent)">Privacy-first selection</strong><br>
+                <br>
+                <strong>Excluded if any of:</strong><br>
+                Analytics tracking detected<br>
+                HTTP, TLS, or CSP grade is F<br>
+                <br>
+                <strong>Then ranked by:</strong><br>
+                HTTP security grade (A+ best)<br>
+                TLS grade<br>
+                CSP / integrity grade<br>
+                Operator has contact info<br>
+                DNSSEC enabled<br>
+                Uptime<br>
+                Response speed (tiebreaker)<br>
+                <br>
+                Replaces your current instance list.
+              </div>
+            </div>
+            <div class="autopick-count-wrap">
+              <input type="range" id="autopick-count" min="1" max="100" value="{{ prefs.autopick_count }}"
+                     oninput="document.getElementById('autopick-count-label').textContent=this.value">
+              <span id="autopick-count-label">{{ prefs.autopick_count }}</span> instances
+            </div>
+          </div>
+        </div>
+        <div id="discover-results"></div>
+        <p class="hint" style="margin-top:6px">Adding an instance is an act of trust — the operator will see your queries as a Tor exit IP.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('autopick')">
+        Auto-pick <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-autopick">
+        <label style="margin-top:0;display:block">Schedule</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+          <select id="autopick_schedule" name="autopick_schedule"
+                  style="width:auto" onchange="updateApScheduleUI()">
+            <option value="never"    {% if prefs.autopick_schedule == 'never'    %}selected{% endif %}>Never</option>
+            <option value="boot"     {% if prefs.autopick_schedule == 'boot'     %}selected{% endif %}>On startup</option>
+            <option value="interval" {% if prefs.autopick_schedule == 'interval' %}selected{% endif %}>Every X minutes</option>
+            <option value="search"   {% if prefs.autopick_schedule == 'search'   %}selected{% endif %}>Every search</option>
+          </select>
+          <span id="ap-interval-wrap" style="display:{% if prefs.autopick_schedule == 'interval' %}flex{% else %}none{% endif %};align-items:center;gap:6px;font-size:13px;color:var(--muted)">
+            every
+            <input type="number" id="autopick_interval" name="autopick_interval"
+                   min="1" max="10080" value="{{ prefs.autopick_interval }}"
+                   style="width:64px">
+            min
+          </span>
+        </div>
+
+        <label style="margin-top:12px;display:block">
+          Count —
+          <span id="ap-count-label" style="color:var(--accent);font-weight:600">{{ prefs.autopick_count }}</span>
+          instances
+        </label>
+        <input type="range" name="autopick_count" id="autopick_count_input"
+               min="1" max="100" value="{{ prefs.autopick_count }}"
+               style="width:100%;accent-color:var(--accent);margin-top:4px"
+               oninput="document.getElementById('ap-count-label').textContent=this.value">
+
+        <label style="margin-top:12px;display:block">
+          Minimum engines —
+          <span id="ap-min-eng-label" style="color:var(--accent);font-weight:600">{{ prefs.autopick_min_engines }}</span>
+          per instance
+        </label>
+        <input type="range" name="autopick_min_engines" id="autopick_min_engines_input"
+               min="0" max="50" value="{{ prefs.autopick_min_engines }}"
+               style="width:100%;accent-color:var(--accent);margin-top:4px"
+               oninput="updateApMinEngines(this.value)">
+        <p class="hint" id="ap-min-eng-hint"></p>
+        <p class="hint" id="ap-status-hint" style="margin-top:6px"></p>
+      </div>
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('instance-stats'); if(!this.classList.contains('collapsed')) loadInstanceStats()">
+        Per-instance performance <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-instance-stats">
+        <div id="instance-stats-container" style="margin-top:6px">
+          <p style="color:var(--muted);font-size:13px">Loading…</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 id="s-routing">Routing</h3>
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('routing-search')" style="margin-top:0;border-top:none">
+        Search routing <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-routing-search">
+      {% set _routing = prefs.use_tor if prefs.use_tor in ('tor', 'tor_fallback', 'direct') else ('tor' if prefs.use_tor else 'direct') %}
+      <label for="use_tor">Route through</label>
+      <select id="use_tor" name="use_tor" onchange="var v=this.value;document.getElementById('dns-row').style.display=v!=='tor'?'block':'none';document.getElementById('warmup-row').style.display=v!=='direct'?'block':'none';document.getElementById('tor-timeout-row').style.display=v!=='direct'?'block':'none'">
+        <option value="tor"          {% if _routing == 'tor'          %}selected{% endif %}>Tor only — anonymous, recommended</option>
+        <option value="tor_fallback" {% if _routing == 'tor_fallback' %}selected{% endif %}>Tor with fallback — tries Tor first, falls back to direct if unreachable or timed out</option>
+        <option value="direct"       {% if _routing == 'direct'       %}selected{% endif %}>Direct — no proxy (fastest, your IP is visible to instances)</option>
+      </select>
+      <p class="hint">When using Tor, your real IP is never sent to any instance. DNS also resolves through Tor. <strong>Tor with fallback</strong> falls back to direct if Tor is unreachable or times out (configure the timeout below) — captchas and rate-limits are per-instance problems, not Tor failures, so they never trigger a fallback. <strong>Tor only</strong> never falls back regardless of timeout.</p>
+
+      <div id="warmup-row" style="display:{% if _routing != 'direct' %}block{% else %}none{% endif %};margin-top:48px">
+        {% set mi_max_w = [[prefs.get('multi_instance', 1) | int, 1] | max, instance_count] | min %}
+        {% set cw_val = [[prefs.get('circuit_warmup', 0) | int, 0] | max, mi_max_w] | min %}
+        <label for="circuit_warmup">
+          Circuit pre-warming —
+          <span id="cw-label" style="color:var(--accent);font-weight:600">{% if cw_val == 0 %}off{% else %}{{ cw_val }}{% endif %}</span>
+        </label>
+        <input type="range" id="circuit_warmup" name="circuit_warmup"
+               min="0" max="{{ mi_max_w }}" value="{{ cw_val }}"
+               style="width:100%;accent-color:var(--accent);margin-top:4px"
+               oninput="updateCwLabel(this.value)">
+        <div class="hint" style="background:color-mix(in srgb,var(--accent) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 25%,var(--border));border-radius:5px;padding:10px 12px;margin-top:6px">
+          <strong style="color:var(--text)">Privacy trade-off:</strong> When above 0, Scrambler connects to
+          <code style="font-size:11px">check.torproject.org</code> through that many Tor circuits at startup
+          — before you search anything — so the circuits are already built when you need them.
+          First-search latency drops significantly. Setting it to match your instances-per-search means
+          every parallel request gets a pre-warmed circuit.<br><br>
+          The downside: Tor makes outbound connections at rest. An observer watching your Tor traffic
+          can see activity even when you haven't searched. Leave at 0 unless first-search speed is a priority.
+        </div>
+      </div>
+
+      <div id="dns-row" style="display:{% if _routing != 'tor' %}block{% else %}none{% endif %}">
+        <label for="custom_dns">Custom DNS server (optional)</label>
+        <input type="text" id="custom_dns" name="custom_dns" value="{{ prefs.custom_dns }}"
+               placeholder="e.g. 194.242.2.2 (Mullvad), 9.9.9.9 (Quad9)" autocomplete="off">
+        <p class="hint">Leave blank to use your system resolver. Only applies when Tor is off.</p>
+      </div>
+
+      <div id="tor-timeout-row" style="display:{% if _routing != 'direct' %}block{% else %}none{% endif %}">
+        <label for="failover_timeout" style="margin-top:20px">Tor request timeout <span style="color:var(--muted);font-size:11px">(seconds, 0 = no limit)</span></label>
+        <input type="number" id="failover_timeout" name="failover_timeout"
+               min="0" max="120" step="1"
+               value="{{ prefs.get('failover_timeout', 12) }}"
+               style="width:100%;box-sizing:border-box">
+        <p class="hint">How long to wait for a Tor response. <strong>Tor with fallback:</strong> when set above 0, falls back to direct after this many seconds <em>or</em> if Tor is unreachable; when set to 0, only falls back if Tor can't connect at all — slow responses don't trigger a fallback. <strong>Tor only:</strong> request is abandoned after this time with no fallback (0 = wait indefinitely). Applies to searches, thumbnails, geocoding, and all other Tor traffic. Default 12 s.</p>
+      </div>
+
+      <div style="margin-top:28px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+          <input type="checkbox" name="direct_engine_fallback" value="1"
+                 {% if prefs.get('direct_engine_fallback') %}checked{% endif %}
+                 id="direct-engine-fallback-cb"
+                 onchange="document.getElementById('brave-key-row').style.display=this.checked?'block':'none'">
+          Direct engine fallback
+        </label>
+        <p class="hint">Last-resort fallback when all SearXNG instances fail to return results for an engine: Scrambler queries that engine directly using the same routing as searches (Tor → direct if tor_fallback). Supported: DuckDuckGo Lite, Brave (HTML scraping without a key; full snippets with an API key), Mojeek, Startpage, Mwmbl. Google and Bing cannot be queried directly.</p>
+      </div>
+      <div id="brave-key-row" style="display:{% if prefs.get('direct_engine_fallback') %}block{% else %}none{% endif %}">
+        <label for="brave_api_key">Brave Search API key</label>
+        <input type="password" id="brave_api_key" name="brave_api_key" value=""
+               placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('brave_api_key') else 'Free key at brave.com/search/api' }}"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint">Optional — without a key, Brave is queried via HTML scraping (titles and URLs only, no snippets). With a key, the API returns full snippets. Free tier: 2,000 queries/month at brave.com/search/api.</p>
+      </div>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('routing-reader')">
+        Reader &amp; Jina <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-routing-reader">
+      <label for="reader_mode" style="margin-top:0;display:block">Tor reader mode</label>
+      {% set _rm = prefs.get('reader_mode', 'both') %}
+      <select id="reader_mode" name="reader_mode">
+        <option value="off"    {% if _rm == 'off'    %}selected{% endif %}>Off — result title links go directly to the target site</option>
+        <option value="both"   {% if _rm == 'both'   %}selected{% endif %}>Both — direct title link + read badge via Tor reader</option>
+        <option value="reader" {% if _rm == 'reader' %}selected{% endif %}>Reader only — title link opens via Tor reader (no direct link)</option>
+      </select>
+      <p class="hint">Fetches pages through a fresh Tor circuit and renders them in a clean reader view — your IP never reaches the target site. <strong>Both</strong> keeps the direct link for when you need the full page. <strong>Reader only</strong> routes every click through Tor. Only available when routing through Tor.</p>
+
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="jina_reader" name="jina_reader" value="1" {% if prefs.get('jina_reader') %}checked{% endif %}>
+        <label for="jina_reader" style="margin:0;font-weight:400">Show Jina reader links on results</label>
+      </div>
+      <p class="hint">Adds a <strong>jina</strong> badge to each result that opens the page via <strong>r.jina.ai</strong> — clean markdown extraction, no cookies, no JS. Works regardless of Tor routing.</p>
+
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="wayback_links" name="wayback_links" value="1" {% if prefs.get('wayback_links', True) %}checked{% endif %}>
+        <label for="wayback_links" style="margin:0;font-weight:400">Show Wayback Machine archive links on results</label>
+      </div>
+      <p class="hint">Adds an <strong>archive</strong> badge to each result linking to <strong>web.archive.org</strong> — lets you read a cached snapshot without hitting the live site. Useful for paywalls, dead links, and avoiding tracking. Always opens as a direct connection (Wayback Machine blocks Tor exit nodes).</p>
+
+      {% set _jr = prefs.get('jina_routing', 'direct') %}
+      <label for="jina_routing" style="margin-top:14px">Jina request routing</label>
+      <select id="jina_routing" name="jina_routing">
+        <option value="direct"       {% if _jr == 'direct'       %}selected{% endif %}>Direct — Jina fetches the page on their servers; your IP never reaches the target</option>
+        <option value="tor_fallback" {% if _jr == 'tor_fallback' %}selected{% endif %}>Tor with fallback — route the Jina request itself through Tor</option>
+        <option value="tor"          {% if _jr == 'tor'          %}selected{% endif %}>Tor only — fail if Jina blocks Tor exit IPs</option>
+      </select>
+      <p class="hint">Applies to both Jina reader links and AI content fetching. Direct is usually fine — Jina fetches the target page on their own infrastructure, so your IP never reaches the site either way.</p>
+
+      <label for="jina_api_key" style="margin-top:14px">Jina API key <span style="color:var(--muted);font-size:11px">(optional but recommended)</span></label>
+      <input type="password" id="jina_api_key" name="jina_api_key" value=""
+             placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('jina_api_key') else 'paste API key here' }}"
+             autocomplete="off" style="width:100%;box-sizing:border-box">
+      <p class="hint">Without a key, Jina rate-limits requests and may return 403. Free keys available at <strong>jina.ai</strong> — 1M tokens/month on the free tier. Never stored in profiles or personalities.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('routing-thumbs')">
+        Thumbnails &amp; map <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-routing-thumbs">
+      <label for="thumbnail_proxy" style="margin-top:0;display:block">Thumbnail loading</label>
+      {% set _tp = prefs.get('thumbnail_proxy', 'direct') %}
+      <select id="thumbnail_proxy" name="thumbnail_proxy">
+        <option value="direct"       {% if _tp == 'direct'       %}selected{% endif %}>Fast — load directly from SearXNG instance (instance sees your IP, CDN does not)</option>
+        <option value="tor_fallback" {% if _tp == 'tor_fallback' %}selected{% endif %}>Tor with fallback — try Tor first, fall back to direct if it fails</option>
+        <option value="tor"          {% if _tp == 'tor'          %}selected{% endif %}>Max privacy — always route thumbnails through Tor (slowest)</option>
+      </select>
+      <p class="hint">Controls how image and video thumbnails are fetched. SearXNG always proxies the actual image CDN, so <strong>Fast</strong> only exposes your IP to the SearXNG instance — not to the image source. <strong>Max privacy</strong> hides your IP from the instance too but adds Tor latency to every thumbnail.</p>
+
+      {% set _mr = prefs.get('map_routing', 'tor') %}
+      <label for="map_routing" style="margin-top:20px">Map data routing</label>
+      <select id="map_routing" name="map_routing">
+        <option value="tor"          {% if _mr == 'tor'          %}selected{% endif %}>Tor only — route geocoding and directions through Tor (recommended)</option>
+        <option value="tor_fallback" {% if _mr == 'tor_fallback' %}selected{% endif %}>Tor with fallback — try Tor first, fall back to direct if unavailable</option>
+        <option value="direct"       {% if _mr == 'direct'       %}selected{% endif %}>Direct — connect to Nominatim and routing APIs without Tor (fastest)</option>
+      </select>
+      <p class="hint">Controls how map geocoding (place search, address lookup) and directions are routed. Independent of the main search routing above.</p>
+
+      <label for="map_tile_routing" style="margin-top:20px">Map tile routing</label>
+      {% set _mtr = prefs.get('map_tile_routing', 'tor') %}
+      <select id="map_tile_routing" name="map_tile_routing">
+        <option value="tor"          {% if _mtr == 'tor'          %}selected{% endif %}>Tor only — always fetch tiles through Tor (most private)</option>
+        <option value="tor_fallback" {% if _mtr == 'tor_fallback' %}selected{% endif %}>Tor with fallback — try Tor first, fall back to direct if unavailable</option>
+        <option value="direct"       {% if _mtr == 'direct'       %}selected{% endif %}>Direct — fetch tiles without Tor (fastest)</option>
+      </select>
+      <p class="hint">Tiles are always fetched server-side — the tile provider never sees your browser IP. This controls whether the server itself uses Tor when fetching them. Tiles are cached by the browser after first load so subsequent views are instant regardless of this setting.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('routing-ai')">
+        AI routing <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-routing-ai">
+      {% set _air = prefs.get('ai_routing', 'direct') %}
+      <label for="ai_routing" style="margin-top:0">AI request routing</label>
+      <select id="ai_routing" name="ai_routing">
+        <option value="direct"       {% if _air == 'direct'       %}selected{% endif %}>Direct — skip Tor (recommended; API key identifies you regardless)</option>
+        <option value="tor_fallback" {% if _air == 'tor_fallback' %}selected{% endif %}>Tor with fallback — try Tor first, fall back to direct if blocked</option>
+        <option value="tor"          {% if _air == 'tor'          %}selected{% endif %}>Tor only — fail if provider blocks Tor exit IPs</option>
+      </select>
+      <p class="hint">Applies to AI summary requests. AI providers often block Tor exit IPs — your API key already identifies your account regardless of IP. Local Ollama always connects directly.</p>
+
+      {% set _rrr = prefs.get('ai_rerank_routing', 'direct') %}
+      {% set _show_rr_routing = prefs.get('ai_reranking') and not prefs.get('ai_rerank_use_search_ai', True) %}
+      <div id="ai-rerank-routing-row" style="display:{% if _show_rr_routing %}block{% else %}none{% endif %}">
+        <label for="ai_rerank_routing" style="margin-top:20px;display:block">AI reranker routing</label>
+        <select id="ai_rerank_routing" name="ai_rerank_routing">
+          <option value="direct"       {% if _rrr == 'direct'       %}selected{% endif %}>Direct (no Tor)</option>
+          <option value="tor_fallback" {% if _rrr == 'tor_fallback' %}selected{% endif %}>Tor with fallback</option>
+          <option value="tor"          {% if _rrr == 'tor'          %}selected{% endif %}>Tor only</option>
+        </select>
+        <p class="hint">Routing for the dedicated reranker provider. Reranking APIs often block Tor exit IPs. Local Ollama always connects directly.</p>
+      </div>
+
+      </div>
+
+    </div>
+
+    <div class="section">
+      <h3 id="s-map">Map</h3>
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('map-tiles')" style="margin-top:0;border-top:none">
+        Tiles &amp; directions <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-map-tiles">
+      <label for="map_tile_provider">Map tile provider</label>
+      {% set _mtp = prefs.get('map_tile_provider', 'openstreetmap') %}
+      <select id="map_tile_provider" name="map_tile_provider" onchange="document.getElementById('map-custom-row').style.display=this.value==='custom'?'block':'none'">
+        <option value="openstreetmap" {% if _mtp == 'openstreetmap' %}selected{% endif %}>OpenStreetMap — open tiles, no account required</option>
+        <option value="carto_light"   {% if _mtp == 'carto_light'   %}selected{% endif %}>CartoDB Positron — clean light theme</option>
+        <option value="carto_dark"    {% if _mtp == 'carto_dark'    %}selected{% endif %}>CartoDB Dark Matter — dark theme</option>
+        <option value="custom"        {% if _mtp == 'custom'        %}selected{% endif %}>Custom URL…</option>
+        <option value="none"          {% if _mtp == 'none'          %}selected{% endif %}>None — show links only, no map</option>
+      </select>
+      <div id="map-custom-row" style="display:{% if _mtp == 'custom' %}block{% else %}none{% endif %};margin-top:8px">
+        <input type="text" id="map_tile_custom_url" name="map_tile_custom_url"
+               value="{{ prefs.get('map_tile_custom_url', '') }}"
+               placeholder="https://{s}.example.com/{z}/{x}/{y}.png"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint" style="margin-top:4px">Standard Leaflet tile URL template. Use <code>{z}</code>, <code>{x}</code>, <code>{y}</code> for zoom/coordinates and <code>{s}</code> for subdomains (a/b/c). Example: <code>https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png</code></p>
+      </div>
+      <label for="route_provider" style="margin-top:20px">Directions routing engine</label>
+      {% set _rp = prefs.get('route_provider', 'osrm_public') %}
+      <select id="route_provider" name="route_provider" onchange="document.getElementById('route-custom-row').style.display=this.value==='custom'?'block':'none'">
+        <option value="osrm_public" {% if _rp == 'osrm_public' %}selected{% endif %}>OSRM (public) — router.project-osrm.org, no account required</option>
+        <option value="custom"      {% if _rp == 'custom'      %}selected{% endif %}>Custom URL — self-hosted OSRM-compatible server</option>
+      </select>
+      <div id="route-custom-row" style="display:{% if _rp == 'custom' %}block{% else %}none{% endif %};margin-top:8px">
+        <input type="text" id="route_custom_url" name="route_custom_url"
+               value="{{ prefs.get('route_custom_url', '') }}"
+               placeholder="https://your-osrm-server.example.com"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint" style="margin-top:4px">Base URL of any OSRM-compatible API. Scrambler appends <code>/route/v1/{profile}/{coords}</code> automatically. Geocoding (Nominatim) is separate and unaffected.</p>
+      </div>
+      <p class="hint">Route requests go through your routing setting above (Tor / direct). The public OSRM instance is run by the OSRM project and has no usage limits for reasonable traffic.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('map-transit')">
+        Transit &amp; units <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-map-transit">
+      <label for="route_transit_url" style="margin-top:0">Transit routing API</label>
+      <input type="text" id="route_transit_url" name="route_transit_url"
+             value="{{ prefs.get('route_transit_url', 'https://api.transitous.org/otp') }}"
+             placeholder="https://api.transitous.org/otp"
+             autocomplete="off" style="width:100%;box-sizing:border-box">
+      <p class="hint"><a href="https://transitous.org" rel="noreferrer noopener" target="_blank">Transitous</a> is a free OTP instance with European coverage. For US cities, use Navitia instead (see below).</p>
+
+      <label for="transit_navitia_key" style="margin-top:14px">Navitia API key <span style="color:var(--muted);font-size:11px">(overrides Transitous when set)</span></label>
+      <input type="password" id="transit_navitia_key" name="transit_navitia_key" value=""
+             placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('transit_navitia_key') else 'paste API key here' }}"
+             autocomplete="off" style="width:100%;box-sizing:border-box">
+      <p class="hint"><a href="https://www.navitia.io/" rel="noreferrer noopener" target="_blank">Navitia.io</a> covers 70+ US &amp; world cities (NYC, Chicago, LA, DC, Boston…). Register free at navitia.io — no credit card needed. When a key is set it takes priority over the OTP URL above.</p>
+
+      {% set _mu = prefs.get('map_units', 'metric') %}
+      <label for="map_units" style="margin-top:20px">Distance units</label>
+      <select id="map_units" name="map_units">
+        <option value="metric"   {% if _mu == 'metric'   %}selected{% endif %}>Metric — metres and kilometres</option>
+        <option value="imperial" {% if _mu == 'imperial' %}selected{% endif %}>Imperial — feet and miles</option>
+      </select>
+
+      {% set _mgeo = prefs.get('map_geolocation', 'hybrid') %}
+      <label for="map_geolocation" style="margin-top:20px">My Location accuracy</label>
+      <select id="map_geolocation" name="map_geolocation">
+        <option value="off"    {% if _mgeo == 'off'    %}selected{% endif %}>Off — disable the My Location button</option>
+        <option value="low"    {% if _mgeo == 'low'    %}selected{% endif %}>Network (WiFi/Cell) — fast fix without GPS; works on desktops</option>
+        <option value="high"   {% if _mgeo == 'high'   %}selected{% endif %}>GPS — high accuracy, slower; requires GPS hardware</option>
+        <option value="hybrid" {% if _mgeo == 'hybrid' %}selected{% endif %}>Hybrid — quick WiFi/Cell fix first, then refines with GPS</option>
+      </select>
+      <p class="hint">Hybrid shows your approximate location immediately then improves it with GPS. Network mode uses WiFi and cell triangulation — no GPS needed. GPS mode requires a location-enabled device.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('map-offline')">
+        Offline tiles <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-map-offline">
+      {% set _mom = prefs.get('map_offline_method', 'none') %}
+      {% set _mob = prefs.get('map_offline_behavior', 'hybrid') %}
+      <label for="map_offline_method" style="margin-top:20px">Offline map tiles</label>
+      <select id="map_offline_method" name="map_offline_method" onchange="updateOfflineUI(this.value)">
+        <option value="none"           {% if _mom == 'none'           %}selected{% endif %}>None — always fetch tiles from the network</option>
+        <option value="service_worker" {% if _mom == 'service_worker' %}selected{% endif %}>Service Worker cache — cache tiles as you browse; download regions on demand</option>
+        <option value="pmtiles"        {% if _mom == 'pmtiles'        %}selected{% endif %}>PMTiles — load tiles from a local .pmtiles archive or URL</option>
+        <option value="both"           {% if _mom == 'both'           %}selected{% endif %}>Both — PMTiles tiles backed by Service Worker cache</option>
+      </select>
+
+      <div id="offline-behavior-row" style="display:{% if _mom != 'none' %}block{% else %}none{% endif %};margin-top:8px">
+        <label for="map_offline_behavior" style="display:block;margin-bottom:4px">When offline tiles are active</label>
+        <select id="map_offline_behavior" name="map_offline_behavior">
+          <option value="hybrid"  {% if _mob == 'hybrid'  %}selected{% endif %}>Hybrid — use cached/local tiles; still query live search and routing APIs</option>
+          <option value="offline" {% if _mob == 'offline' %}selected{% endif %}>Fully offline — tiles only; search and routing are disabled</option>
+        </select>
+      </div>
+
+      <div id="pmtiles-url-row" style="display:{% if _mom in ('pmtiles', 'both') %}block{% else %}none{% endif %};margin-top:8px">
+        <label for="map_pmtiles_url" style="display:block;margin-bottom:4px">PMTiles source URL</label>
+        <input type="text" id="map_pmtiles_url" name="map_pmtiles_url"
+               value="{{ prefs.get('map_pmtiles_url', '') }}"
+               placeholder="https://example.com/region.pmtiles"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint" style="margin-top:4px">URL to a raster .pmtiles archive. You can also load a local file directly from the map panel without configuring a URL here. Free regional archives are available from <a href="https://maps.protomaps.com" rel="noreferrer noopener" target="_blank">Protomaps</a> and others.</p>
+      </div>
+      <p class="hint">Offline tiles let the map display without a network connection. Service Worker caching works with any tile provider above. PMTiles loads a single self-contained archive — good for frequently visited areas.</p>
+      </div>
+
+    </div>
+
+    <div class="section">
+      <h3 id="s-ai">AI Summary</h3>
+
+      <p class="hint" style="margin-top:0;margin-bottom:12px">Optional. When configured, a "✦ Ask AI" button appears on results. Your query and top results are sent to the provider on demand — never automatically.</p>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('ai-personalities')" style="margin-top:0;border-top:none">
+        Saved personalities <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-ai-personalities">
+        <div id="personalities-bar" class="themes-row"></div>
+        <div class="theme-save-bar" style="margin-top:8px">
+          <input type="text" id="personality-name-input" placeholder="Personality name…" autocomplete="off">
+          <button type="button" class="secondary" id="personality-save-btn" onclick="savePersonality()" disabled>Save current</button>
+        </div>
+        <p class="hint">Saves the current AI settings (provider, model, routing, prompt, avatars) as a named preset. Your API key is never included.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('ai-provider')">
+        LLM Summary <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-ai-provider">
+      {% set _aip = prefs.get('ai_provider', '') %}
+      <label for="ai_provider" style="margin-top:0">Provider</label>
+      <select id="ai_provider" name="ai_provider" onchange="updateAiUI(this.value)">
+        <option value=""              {% if _aip == ''              %}selected{% endif %}>Off — disable AI summary</option>
+        <option value="anthropic"     {% if _aip == 'anthropic'     %}selected{% endif %}>Anthropic-compatible API</option>
+        <option value="openai_compat" {% if _aip == 'openai_compat' %}selected{% endif %}>OpenAI-compatible API</option>
+        <option value="ollama"        {% if _aip == 'ollama'        %}selected{% endif %}>Ollama (local)</option>
+      </select>
+
+      <div id="ai-key-row" style="display:{% if _aip in ('anthropic', 'openai_compat') %}block{% else %}none{% endif %}">
+        <label for="ai_api_key" style="margin-top:14px">API key</label>
+        <input type="password" id="ai_api_key" name="ai_api_key" value=""
+               placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('ai_api_key') else 'paste API key here' }}"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint">Leave blank to keep the existing key. Stored server-side only — never sent to your browser.</p>
+      </div>
+
+      <div id="ai-url-row" style="display:{% if _aip in ('openai_compat', 'ollama') %}block{% else %}none{% endif %}">
+        <label for="ai_base_url" style="margin-top:14px">API base URL</label>
+        <input type="text" id="ai_base_url" name="ai_base_url"
+               value="{{ prefs.get('ai_base_url', '') }}"
+               placeholder="{{ 'http://localhost:11434' if _aip == 'ollama' else 'https://api.openai.com' }}"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint">Ollama default: <code>http://localhost:11434</code>. Local addresses always connect directly (bypass Tor). Leave blank for OpenAI default.</p>
+      </div>
+
+      <label for="ai_model" style="margin-top:14px">Model</label>
+      <input type="text" id="ai_model" name="ai_model"
+             value="{{ prefs.get('ai_model', '') }}"
+             placeholder="{{ 'claude-sonnet-4-6' if _aip == 'anthropic' else ('llama3' if _aip == 'ollama' else 'gpt-4o') }}"
+             autocomplete="off" list="ai-model-suggestions" style="width:100%;box-sizing:border-box">
+      <datalist id="ai-model-suggestions">
+        <option value="claude-sonnet-4-6">
+        <option value="claude-haiku-4-5-20251001">
+        <option value="gpt-4o">
+        <option value="gpt-4o-mini">
+        <option value="gpt-3.5-turbo">
+        <option value="meta-llama/llama-3.1-8b-instruct:free">
+        <option value="google/gemma-2-9b-it:free">
+        <option value="mistralai/mistral-7b-instruct:free">
+        <option value="microsoft/phi-3-mini-128k-instruct:free">
+        <option value="llama3">
+        <option value="llama3:8b">
+        <option value="mistral">
+        <option value="phi3">
+      </datalist>
+
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="ai_use_jina" name="ai_use_jina" value="1" {% if prefs.get('ai_use_jina') %}checked{% endif %}>
+        <label for="ai_use_jina" style="margin:0;font-weight:400">Fetch full page content via Jina for richer AI summaries</label>
+      </div>
+      <p class="hint">When enabled, Scrambler fetches each result's full page content through <strong>r.jina.ai</strong> before sending to the AI — much richer than snippets alone. Adds latency proportional to the number of results.</p>
+
+      <label for="ai_max_results" style="margin-top:14px">
+        Results to include — <span id="ai-max-label" style="color:var(--accent);font-weight:600">{{ prefs.get('ai_max_results', 10) }}</span>
+      </label>
+      <input type="range" id="ai_max_results" name="ai_max_results"
+             min="1" max="20" value="{{ prefs.get('ai_max_results', 10) }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="document.getElementById('ai-max-label').textContent=this.value">
+      <p class="hint">Number of search results sent to the AI. More context = better answers, but more tokens used.</p>
+
+      <label for="ai_system_prompt" style="margin-top:14px">System prompt <span style="color:var(--muted);font-size:11px">(optional)</span></label>
+      <textarea id="ai_system_prompt" name="ai_system_prompt"
+                rows="4" placeholder="Leave blank to use the default: summarize the top search results concisely."
+                style="font-size:13px;line-height:1.6;min-height:80px">{{ prefs.get('ai_system_prompt', '') }}</textarea>
+      <p class="hint">Overrides the built-in prompt. The current query and search results are always appended as a user message.</p>
+
+      <label for="ai_avatar" style="margin-top:14px">AI avatar <span style="color:var(--muted);font-size:11px">(optional)</span></label>
+      <input type="text" id="ai_avatar" name="ai_avatar"
+             value="{{ prefs.get('ai_avatar', '') }}"
+             placeholder="Leave blank to use Scrambler's favicon. Enter an emoji or image URL."
+             autocomplete="off" style="width:100%;box-sizing:border-box">
+
+      <label for="ai_user_avatar" style="margin-top:14px">Your avatar <span style="color:var(--muted);font-size:11px">(optional)</span></label>
+      <input type="text" id="ai_user_avatar" name="ai_user_avatar"
+             value="{{ prefs.get('ai_user_avatar', '') }}"
+             placeholder="Default: 👤. Enter an emoji or image URL."
+             autocomplete="off" style="width:100%;box-sizing:border-box">
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('ai-reranking')">
+        AI Reranking <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-ai-reranking">
+      <p class="hint" style="margin-top:8px;margin-bottom:12px">When enabled, the final ranked results are sent to an AI and reordered by relevance. Runs once at the end of the ranking pipeline (not on every streaming batch).</p>
+
+      <div class="toggle-row" style="margin-top:8px">
+        <input type="checkbox" id="ai_reranking" name="ai_reranking" value="1"
+               {% if prefs.get('ai_reranking') %}checked{% endif %}
+               onchange="updateRerankRoutingVisibility()">
+        <label for="ai_reranking" style="margin:0;font-weight:400">Enable AI reranking</label>
+      </div>
+
+      <label for="ai_rerank_count" style="margin-top:14px">
+        Results to rerank — <span id="ai-rerank-label" style="color:var(--accent);font-weight:600">{{ prefs.get('ai_rerank_count', 20) }}</span>
+      </label>
+      <input type="range" id="ai_rerank_count" name="ai_rerank_count"
+             min="1" max="100" value="{{ prefs.get('ai_rerank_count', 20) }}"
+             oninput="document.getElementById('ai-rerank-label').textContent=this.value">
+      <p class="hint">How many of the top results to send to the AI. Results beyond this count keep their existing order after the reranked ones.</p>
+
+      {% set _rrt = prefs.get('ai_rerank_timing', 'final') %}
+      <label for="ai_rerank_timing" style="margin-top:14px">When to rerank</label>
+      <select id="ai_rerank_timing" name="ai_rerank_timing">
+        <option value="final"     {% if _rrt == 'final'     %}selected{% endif %}>End only — once after all instances report (recommended)</option>
+        <option value="streaming" {% if _rrt == 'streaming' %}selected{% endif %}>Throughout — after every instance batch (more API calls, live updates)</option>
+        <option value="ask_only"  {% if _rrt == 'ask_only'  %}selected{% endif %}>Ask AI only — never rerank automatically</option>
+      </select>
+      <p class="hint">End only is faster and uses fewer API calls. Throughout reranks on every streaming update. Ask AI only disables background reranking entirely — only runs when you click Ask AI.</p>
+
+      <div class="toggle-row" style="margin-top:14px">
+        <input type="checkbox" id="ai_rerank_use_search_ai" name="ai_rerank_use_search_ai" value="1"
+               {% if prefs.get('ai_rerank_use_search_ai', True) %}checked{% endif %}
+               onchange="document.getElementById('ai-rerank-custom').style.display=this.checked?'none':'block';updateRerankRoutingVisibility()">
+        <label for="ai_rerank_use_search_ai" style="margin:0;font-weight:400">Use same AI as search summary</label>
+      </div>
+
+      {% set _use_search = prefs.get('ai_rerank_use_search_ai', True) %}
+      {% set _rrp = prefs.get('ai_rerank_provider', '') %}
+      <div id="ai-rerank-custom" style="display:{% if not _use_search %}block{% else %}none{% endif %};margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:6px">
+        <label for="ai_rerank_provider">Reranker provider</label>
+        <select id="ai_rerank_provider" name="ai_rerank_provider" onchange="updateRerankUI(this.value)">
+          <option value=""              {% if _rrp == ''              %}selected{% endif %}>— select provider —</option>
+          <option value="rerank_api"    {% if _rrp == 'rerank_api'    %}selected{% endif %}>Reranking API (Cohere/OpenRouter/Jina)</option>
+          <option value="anthropic"     {% if _rrp == 'anthropic'     %}selected{% endif %}>Anthropic (chat-based rerank)</option>
+          <option value="openai_compat" {% if _rrp == 'openai_compat' %}selected{% endif %}>OpenAI-compatible (chat-based rerank)</option>
+          <option value="ollama"        {% if _rrp == 'ollama'        %}selected{% endif %}>Ollama (local, chat-based rerank)</option>
+        </select>
+
+        <div id="rr-key-row" style="display:{% if _rrp in ('anthropic', 'openai_compat', 'rerank_api') %}block{% else %}none{% endif %}">
+          <label for="ai_rerank_api_key" style="margin-top:12px">API key</label>
+          <input type="password" id="ai_rerank_api_key" name="ai_rerank_api_key" value=""
+                 placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('ai_rerank_api_key') else 'paste API key here' }}"
+                 autocomplete="off" style="width:100%;box-sizing:border-box">
+          <p class="hint">Leave blank to keep the existing key. Stored server-side only.</p>
+        </div>
+
+        <div id="rr-url-row" style="display:{% if _rrp in ('openai_compat', 'ollama', 'rerank_api') %}block{% else %}none{% endif %}">
+          <label for="ai_rerank_base_url" style="margin-top:12px">API base URL</label>
+          <input type="text" id="ai_rerank_base_url" name="ai_rerank_base_url"
+                 value="{{ prefs.get('ai_rerank_base_url', '') }}"
+                 placeholder="{{ 'http://localhost:11434' if _rrp == 'ollama' else 'https://api.openai.com' }}"
+                 autocomplete="off" style="width:100%;box-sizing:border-box">
+        </div>
+
+        <label for="ai_rerank_model" style="margin-top:12px">Model</label>
+        <input type="text" id="ai_rerank_model" name="ai_rerank_model"
+               value="{{ prefs.get('ai_rerank_model', '') }}"
+               placeholder="e.g. jina-reranker-v2-base-multilingual, bge-reranker-large"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+      </div>
+
+      <div class="toggle-row" style="margin-top:14px">
+        <input type="checkbox" id="ai_rerank_on_ask" name="ai_rerank_on_ask" value="1"
+               {% if prefs.get('ai_rerank_on_ask', True) %}checked{% endif %}>
+        <label for="ai_rerank_on_ask" style="margin:0;font-weight:400">Rerank when Ask AI is pressed</label>
+      </div>
+      <p class="hint">Before generating the AI summary, re-run the reranker on all results collected so far. The summary then sees the best-ordered results. Adds one rerank API call when you click Ask AI.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('ai-imagegen')">
+        Image Generation <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-ai-imagegen">
+      <p class="hint" style="margin-top:0;margin-bottom:12px">When configured, pressing "✦ Ask AI" on the Images tab generates an image: the AI writes an optimised prompt from your query, then sends it to the image generation provider below.</p>
+
+      <label for="img_gen_provider">Provider</label>
+      <select id="img_gen_provider" name="img_gen_provider" onchange="toggleImgGenFields()">
+        <option value="off"        {% if prefs.get('img_gen_provider','off') == 'off'         %}selected{% endif %}>Off — use standard Ask AI on Images tab</option>
+        <option value="openai"     {% if prefs.get('img_gen_provider','off') == 'openai'      %}selected{% endif %}>OpenAI-compatible (DALL-E, fal.ai, LocalAI…)</option>
+        <option value="automatic1111" {% if prefs.get('img_gen_provider','off') == 'automatic1111' %}selected{% endif %}>AUTOMATIC1111 / Forge / SD.Next</option>
+      </select>
+
+      <div id="img-gen-config-fields">
+        <label for="img_gen_base_url" style="margin-top:14px">Base URL</label>
+        <input type="text" id="img_gen_base_url" name="img_gen_base_url"
+               placeholder="https://api.openai.com  or  http://127.0.0.1:7860"
+               value="{{ prefs.get('img_gen_base_url', '') }}" autocomplete="off">
+        <p class="hint">Leave blank for OpenAI default. For local A1111 use <code>http://127.0.0.1:7860</code>.</p>
+      </div>
+
+      <div id="img-gen-openai-fields">
+        <label for="img_gen_api_key">API key</label>
+        <input type="password" id="img_gen_api_key" name="img_gen_api_key" value=""
+               placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('img_gen_api_key') else 'paste API key here' }}"
+               autocomplete="off" style="width:100%;box-sizing:border-box">
+        <p class="hint">Leave blank to keep the existing key. Stored server-side only.</p>
+
+        <label for="img_gen_model" style="margin-top:14px">Model</label>
+        <input type="text" id="img_gen_model" name="img_gen_model"
+               placeholder="dall-e-3"
+               value="{{ prefs.get('img_gen_model', 'dall-e-3') }}" autocomplete="off">
+      </div>
+
+      <div id="img-gen-config-fields-2">
+        <label for="img_gen_size" style="margin-top:14px">Image size</label>
+        <select id="img_gen_size" name="img_gen_size">
+          {% for sz in ['1024x1024','512x512','1024x1792','1792x1024','768x768','1280x720'] %}
+          <option value="{{ sz }}" {% if prefs.get('img_gen_size','1024x1024') == sz %}selected{% endif %}>{{ sz }}</option>
+          {% endfor %}
+        </select>
+
+        <div id="img-gen-a1111-fields" style="display:none">
+          <label for="img_gen_steps" style="margin-top:14px">Steps</label>
+          <input type="number" id="img_gen_steps" name="img_gen_steps"
+                 min="1" max="150" step="1"
+                 value="{{ prefs.get('img_gen_steps', 20) }}" style="width:80px">
+
+          <label for="img_gen_cfg_scale" style="margin-top:14px">CFG scale</label>
+          <input type="number" id="img_gen_cfg_scale" name="img_gen_cfg_scale"
+                 min="1" max="30" step="0.5"
+                 value="{{ prefs.get('img_gen_cfg_scale', 7.0) }}" style="width:80px">
+        </div>
+
+        <label for="img_gen_negative_prompt" style="margin-top:14px">Default negative prompt <span style="color:var(--muted);font-size:11px">(optional)</span></label>
+        <input type="text" id="img_gen_negative_prompt" name="img_gen_negative_prompt"
+               placeholder="blurry, low quality, watermark…"
+               value="{{ prefs.get('img_gen_negative_prompt', '') }}" autocomplete="off">
+        <p class="hint">Appended to the AI-generated negative prompt. Mainly useful for A1111.</p>
+      </div>
+      </div>
+    </div>
+
+    <script>
+    function toggleImgGenFields() {
+      const v = document.getElementById('img_gen_provider').value;
+      const on = v !== 'off';
+      document.getElementById('img-gen-config-fields').style.display   = on ? '' : 'none';
+      document.getElementById('img-gen-config-fields-2').style.display = on ? '' : 'none';
+      document.getElementById('img-gen-openai-fields').style.display   = v === 'openai'        ? '' : 'none';
+      document.getElementById('img-gen-a1111-fields').style.display    = v === 'automatic1111' ? '' : 'none';
+    }
+    toggleImgGenFields();
+    </script>
+
+    <div class="section">
+      <h3 id="s-appearance">Appearance</h3>
+
+      <!-- ── Themes ─────────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('themes')" style="margin-top:0;border-top:none">
+        Saved themes <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-themes">
+        <div id="themes-bar" class="themes-row"></div>
+        <div class="theme-save-bar">
+          <input type="text" id="theme-name-input" placeholder="Theme name…" autocomplete="off">
+          <button type="button" class="secondary" onclick="saveTheme()">Save current</button>
+        </div>
+        <p class="hint">Saves the entire appearance section — colors, font, background, title, favicon.</p>
+      </div>
+
+      <!-- ── Text & Identity ────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('identity')">
+        Text &amp; Identity <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-identity">
+        <label for="appearance_title">Site title</label>
+        <input type="text" id="appearance_title" name="appearance_title"
+               value="{{ appearance.title }}" autocomplete="off">
+
+        <label for="appearance_tagline">Homepage tagline</label>
+        <textarea id="appearance_tagline" name="appearance_tagline"
+                  rows="2" style="min-height:56px">{{ appearance.tagline }}</textarea>
+
+        <label for="appearance_subtitle">Footer text</label>
+        <input type="text" id="appearance_subtitle" name="appearance_subtitle"
+               value="{{ appearance.subtitle }}" autocomplete="off">
+
+        <label>Favicon</label>
+        <div class="favicon-row">
+          <input type="text" id="appearance_favicon" name="appearance_favicon"
+                 value="{{ appearance.favicon }}" autocomplete="off"
+                 placeholder="emoji or https://…" oninput="updateFaviconPreview(this.value)">
+          <span id="favicon-preview">{{ appearance.favicon }}</span>
+        </div>
+        <p class="hint">Enter an emoji (🔍 🛡️ 🌐) or a full URL to an image file.</p>
+      </div>
+
+      <!-- ── Background ─────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('background')">
+        Background <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-background">
+        <label for="appearance_background_image">Background</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="appearance_background_image" name="appearance_background_image"
+                 value="{{ appearance.background_image }}" autocomplete="off"
+                 placeholder="https://… or upload a file →"
+                 oninput="liveBg(this.value)" style="flex:1;margin:0">
+          <label class="secondary" style="cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);transition:border-color 0.15s,color 0.15s">
+            Upload file
+            <input type="file" accept="image/*,.gif,.mp4,.webm,.mov,.ogg" style="display:none" onchange="uploadBackground(this)">
+          </label>
+        </div>
+        <p class="hint" id="bg-upload-status">PNG, JPG, GIF, WebP, MP4, WebM — max 200 MB. Video plays muted on loop. Leave blank for no background.</p>
+
+        <div style="display:flex;gap:16px;margin-top:10px;align-items:flex-end">
+          <div style="flex:1">
+            <label for="appearance_background_size">Sizing</label>
+            <select id="appearance_background_size" name="appearance_background_size"
+                    onchange="liveBgSize(this.value)">
+              <option value="cover"   {% if appearance.background_size == 'cover'   %}selected{% endif %}>Cover — fill the screen</option>
+              <option value="contain" {% if appearance.background_size == 'contain' %}selected{% endif %}>Contain — fit inside</option>
+              <option value="tile"    {% if appearance.background_size == 'tile'    %}selected{% endif %}>Tile — repeat</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label for="appearance_background_opacity">
+              Opacity — <span id="opacity-label">{{ (appearance.background_opacity * 100) | int }}%</span>
+            </label>
+            <input type="range" id="appearance_background_opacity" name="appearance_background_opacity"
+                   min="0" max="1" step="0.01"
+                   value="{{ appearance.background_opacity }}"
+                   style="width:100%;accent-color:var(--accent)"
+                   oninput="liveBgOpacity(this.value)">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+          <input type="checkbox" id="appearance_background_video_loop" name="appearance_background_video_loop" value="1" {% if appearance.get('background_video_loop', True) %}checked{% endif %}>
+          <label for="appearance_background_video_loop" style="margin:0;font-weight:400;font-size:13px;color:var(--muted)">Loop video</label>
+        </div>
+
+      </div>
+
+      <!-- ── Cursor ─────────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('cursor')">
+        Cursor <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-cursor">
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+          <input type="text" name="appearance_cursor_url" id="appearance_cursor_url"
+                 value="{{ appearance.cursor_url }}" autocomplete="off"
+                 placeholder="Custom cursor URL — leave blank for default"
+                 style="flex:1">
+          <label class="secondary" style="cursor:pointer;white-space:nowrap;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            Upload
+            <input type="file" accept=".png,.svg,.cur,.gif" style="display:none"
+                   onchange="uploadCursor(this)">
+          </label>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span class="hint" style="margin:0;white-space:nowrap">Trail effect</span>
+          <select name="appearance_cursor_trail" style="width:auto;font-size:13px;padding:5px 8px">
+            <option value="off"      {% if appearance.cursor_trail == 'off'      %}selected{% endif %}>None</option>
+            <option value="sparkles" {% if appearance.cursor_trail == 'sparkles' %}selected{% endif %}>Sparkles ✦</option>
+            <option value="dots"     {% if appearance.cursor_trail == 'dots'     %}selected{% endif %}>Dots</option>
+            <option value="stars"    {% if appearance.cursor_trail == 'stars'    %}selected{% endif %}>Stars ★</option>
+            <option value="bubbles"  {% if appearance.cursor_trail == 'bubbles'  %}selected{% endif %}>Bubbles</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <input type="text" name="appearance_cursor_trail_url" id="appearance_cursor_trail_url"
+                 value="{{ appearance.cursor_trail_url }}" autocomplete="off"
+                 placeholder="Custom trail image URL (overrides trail style above)"
+                 style="flex:1">
+          <label class="secondary" style="cursor:pointer;white-space:nowrap;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            Upload
+            <input type="file" accept=".png,.svg,.gif,.webp" style="display:none"
+                   onchange="uploadCursorTrail(this)">
+          </label>
+        </div>
+        <p class="hint">PNG/GIF/SVG up to 2 MB. Keep cursors small (32×32 or 64×64) for best browser support. Trail images are shown at 24px.</p>
+      </div>
+
+      <!-- ── Sound effects ──────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('sound')">
+        Sound effects <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-sound">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 16px;margin-top:4px">
+          <div>
+            <p class="hint" style="margin-bottom:4px">Typing</p>
+            <select name="appearance_typing_sound" style="width:100%;font-size:13px">
+              <option value="off"        {% if appearance.typing_sound == 'off'        %}selected{% endif %}>Off</option>
+              <option value="click"      {% if appearance.typing_sound == 'click'      %}selected{% endif %}>Click</option>
+              <option value="typewriter" {% if appearance.typing_sound == 'typewriter' %}selected{% endif %}>Typewriter</option>
+              <option value="soft"       {% if appearance.typing_sound == 'soft'       %}selected{% endif %}>Soft</option>
+            </select>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input type="text" name="appearance_typing_sound_url"
+                     value="{{ appearance.typing_sound_url }}"
+                     placeholder="Custom URL (overrides above)"
+                     style="flex:1;font-size:12px" autocomplete="off">
+              <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+                ↑ Upload
+                <input type="file" accept=".mp3,.ogg,.wav,.flac,.m4a,.aac,.opus,.webm" style="display:none"
+                       onchange="uploadSoundFile(this,'appearance_typing_sound_url')">
+              </label>
+            </div>
+          </div>
+          <div>
+            <p class="hint" style="margin-bottom:4px">On search</p>
+            <select name="appearance_search_sound" style="width:100%;font-size:13px">
+              <option value="off"    {% if appearance.search_sound == 'off'    %}selected{% endif %}>Off</option>
+              <option value="whoosh" {% if appearance.search_sound == 'whoosh' %}selected{% endif %}>Whoosh</option>
+              <option value="ding"   {% if appearance.search_sound == 'ding'   %}selected{% endif %}>Ding</option>
+              <option value="retro"  {% if appearance.search_sound == 'retro'  %}selected{% endif %}>Retro</option>
+            </select>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input type="text" name="appearance_search_sound_url"
+                     value="{{ appearance.search_sound_url }}"
+                     placeholder="Custom URL (overrides above)"
+                     style="flex:1;font-size:12px" autocomplete="off">
+              <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+                ↑ Upload
+                <input type="file" accept=".mp3,.ogg,.wav,.flac,.m4a,.aac,.opus,.webm" style="display:none"
+                       onchange="uploadSoundFile(this,'appearance_search_sound_url')">
+              </label>
+            </div>
+          </div>
+          <div>
+            <p class="hint" style="margin-bottom:4px">On click</p>
+            <select name="appearance_click_sound" style="width:100%;font-size:13px">
+              <option value="off"   {% if appearance.get('click_sound','off') == 'off'   %}selected{% endif %}>Off</option>
+              <option value="tick"  {% if appearance.get('click_sound','off') == 'tick'  %}selected{% endif %}>Tick</option>
+              <option value="pop"   {% if appearance.get('click_sound','off') == 'pop'   %}selected{% endif %}>Pop</option>
+              <option value="retro" {% if appearance.get('click_sound','off') == 'retro' %}selected{% endif %}>Retro</option>
+            </select>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input type="text" name="appearance_click_sound_url"
+                     value="{{ appearance.get('click_sound_url','') }}"
+                     placeholder="Custom URL (overrides above)"
+                     style="flex:1;font-size:12px" autocomplete="off">
+              <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+                ↑ Upload
+                <input type="file" accept=".mp3,.ogg,.wav,.flac,.m4a,.aac,.opus,.webm" style="display:none"
+                       onchange="uploadSoundFile(this,'appearance_click_sound_url')">
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span class="hint" style="margin:0;white-space:nowrap">Effects volume — <span id="sfx-vol-label">{{ (appearance.sound_volume * 100) | int }}%</span></span>
+          <input type="range" name="appearance_sound_volume" min="0" max="1" step="0.05"
+                 value="{{ appearance.sound_volume }}" style="flex:1;accent-color:var(--accent)"
+                 oninput="document.getElementById('sfx-vol-label').textContent=Math.round(this.value*100)+'%'">
+        </div>
+
+        <label style="margin-top:20px">Background music</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="appearance_background_audio_url" name="appearance_background_audio_url"
+                 value="{{ appearance.background_audio_url }}" autocomplete="off"
+                 placeholder="Paste a URL or upload a file →"
+                 style="flex:1">
+          <label class="secondary" style="cursor:pointer;white-space:nowrap;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+            Upload file
+            <input type="file" accept=".mp3,.ogg,.wav,.flac,.m4a,.aac,.opus,.webm" style="display:none"
+                   onchange="uploadAudio(this)">
+          </label>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <label for="appearance_background_audio_volume" style="white-space:nowrap;margin:0;font-weight:normal;font-size:13px;color:var(--muted)">
+            Volume — <span id="audio-vol-label">{{ (appearance.background_audio_volume * 100) | int }}%</span>
+          </label>
+          <input type="range" id="appearance_background_audio_volume" name="appearance_background_audio_volume"
+                 min="0" max="1" step="0.05"
+                 value="{{ appearance.background_audio_volume }}"
+                 style="flex:1;accent-color:var(--accent)"
+                 oninput="document.getElementById('audio-vol-label').textContent=Math.round(this.value*100)+'%'">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <select id="appearance_background_audio_loop" name="appearance_background_audio_loop" style="width:auto;font-size:13px;padding:5px 8px">
+            <option value="1" {% if appearance.background_audio_loop != false %}selected{% endif %}>Loop</option>
+            <option value="0" {% if appearance.background_audio_loop == false %}selected{% endif %}>Play once</option>
+          </select>
+          <span class="hint" style="margin:0">Loop repeats forever; play once stops at the end.</span>
+        </div>
+        <p class="hint">MySpace style background audio. Supports MP3, OGG, WAV, FLAC, M4A, OPUS. Leave blank for silence.</p>
+      </div>
+
+      <!-- ── Font ───────────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('font')">
+        Font <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-font">
+        <label for="appearance_font_family">Font family</label>
+        <input type="text" id="appearance_font_family" name="appearance_font_family"
+               value="{{ appearance.font_family }}" autocomplete="off"
+               placeholder="e.g. Inter, JetBrains Mono, Georgia"
+               list="font-suggestions"
+               oninput="liveFont(this.value)">
+        <datalist id="font-suggestions">
+          <option value="Inter">
+          <option value="VT323">
+          <option value="JetBrains Mono">
+          <option value="Geist">
+          <option value="IBM Plex Sans">
+          <option value="IBM Plex Mono">
+          <option value="Fira Code">
+          <option value="Source Code Pro">
+          <option value="Roboto">
+          <option value="Roboto Mono">
+          <option value="Lato">
+          <option value="Nunito">
+          <option value="Merriweather">
+          <option value="Georgia">
+          <option value="Courier New">
+        </datalist>
+        <p class="hint">Leave blank for the system default. Type any installed font or a Google Fonts name (requires import URL below).</p>
+
+        <label for="appearance_font_import_url">Google Fonts URL</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="appearance_font_import_url" name="appearance_font_import_url"
+                 value="{{ appearance.font_import_url }}" autocomplete="off"
+                 placeholder="https://fonts.googleapis.com/css2?family=…&display=swap"
+                 style="flex:1;margin:0">
+          <button type="button" class="secondary" id="dl-font-btn" onclick="downloadFont()" style="white-space:nowrap">Download &amp; self-host</button>
+        </div>
+        <p class="hint" id="dl-font-status">
+          {% if appearance.font_face_css %}
+          <span style="color:var(--url)">✓ Font is self-hosted locally — no external requests.</span>
+          {% else %}
+          Paste a Google Fonts URL and click "Download &amp; self-host" to serve the font locally with no external requests. Or leave blank to use the bundled Inter.
+          {% endif %}
+        </p>
+        <input type="hidden" id="appearance_font_face_css" name="appearance_font_face_css"
+               value="{{ appearance.font_face_css | e }}">
+      </div>
+
+      <!-- ── Colorways ──────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('colorways')">
+        Colorways <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-colorways">
+        <div class="preset-bar" style="margin-top:4px">
+          <button type="button" class="secondary" onclick="applyPreset('dark')">Dark</button>
+          <button type="button" class="secondary" onclick="applyPreset('light')">Light</button>
+          <button type="button" class="secondary" onclick="applyPreset('nord')">Nord</button>
+          <button type="button" class="secondary" onclick="applyPreset('catppuccin')">Catppuccin</button>
+          <button type="button" class="secondary" onclick="applyPreset('solarized')">Solarized</button>
+          <button type="button" class="secondary" onclick="applyPreset('hacker')" style="color:#33ff33;border-color:#0d3a0d">H4CK3R</button>
+          <button type="button" class="secondary" onclick="applyPreset('breakfast')" style="color:#f5c518;border-color:#4a3318">Breakfast</button>
+        </div>
+        <div id="saved-colorways" class="preset-bar" style="margin-top:6px"></div>
+        <div class="theme-save-bar" style="margin-top:8px">
+          <input type="text" id="colorway-name-input" placeholder="Colorway name…" autocomplete="off">
+          <button type="button" class="secondary" onclick="saveColorway()">Save palette</button>
+        </div>
+        <p class="hint">Colorways swap the palette only — title, font, and background are left as-is. Use the saved themes above to apply a full look.</p>
+      </div>
+
+      <!-- ── Loading ────────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('loading')">
+        Loading <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-loading">
+        {% set _sr = prefs.get('streaming_results', 'off') %}
+        {% set _li = appearance.get('loading_indicator', 'bar') %}
+        <label for="appearance_loading_indicator" style="margin-top:0">Loading indicator</label>
+        <select id="appearance_loading_indicator" name="appearance_loading_indicator" onchange="updateIndicator(this.value)">
+          {% if _sr == 'live' %}
+          <option value="tree"    {% if _li == 'tree'    %}selected{% endif %}>Tree — live sidebar showing each engine's status as results come in</option>
+          <option value="console" {% if _li == 'console' %}selected{% endif %}>Console — timestamped event log (replaces tree)</option>
+          <option value="none"    {% if _li == 'none'    %}selected{% endif %}>None — no side panel</option>
+          {% else %}
+          <option value="bar"     {% if _li == 'bar'     %}selected{% endif %}>Bar — loading bar with quip</option>
+          <option value="tracker" {% if _li == 'tracker' %}selected{% endif %}>Tracker — engine chips, results appear when done</option>
+          <option value="console" {% if _li == 'console' %}selected{% endif %}>Console — event log on splash, results appear when done</option>
+          <option value="none"    {% if _li == 'none'    %}selected{% endif %}>None — no loading indicator</option>
+          {% endif %}
+        </select>
+
+        <div id="bar-wrap" {% if _sr == 'live' or _li != 'bar' %}style="display:none"{% endif %}>
+          <label for="appearance_loading_bar_style">Bar style</label>
+          <select id="appearance_loading_bar_style" name="appearance_loading_bar_style">
+            <option value="crawl" {% if appearance.loading_bar_style == 'crawl' %}selected{% endif %}>Crawl — smooth fake progress</option>
+            <option value="timed" {% if appearance.loading_bar_style == 'timed' %}selected{% endif %}>Timed — tracks request timeout</option>
+            <option value="none" {% if appearance.loading_bar_style == 'none' %}selected{% endif %}>None — hide the bar</option>
+          </select>
+          <p class="hint">Timed mode fills the bar linearly over the configured request timeout, so it roughly reflects actual wait time.</p>
+
+          <label for="appearance_loading_quips">Loading quips</label>
+          <textarea id="appearance_loading_quips" name="appearance_loading_quips"
+                    rows="5" placeholder="One quip per line. Leave empty for defaults."
+                    style="font-size:13px;line-height:1.6">{{ (appearance.loading_quips or []) | join('\n') }}</textarea>
+          <p class="hint">One line per quip. They cycle while search results load. Leave blank to use the built-in defaults.</p>
+        </div>
+
+        {% set _ct_style = appearance.get('christmas_tree_style', 'dots') %}
+        <div id="ct-style-wrap2" {% if _sr != 'live' or _li != 'tree' %}style="display:none"{% endif %}>
+          <label for="appearance_christmas_tree_style2">Tree style</label>
+          <select id="appearance_christmas_tree_style2" name="appearance_christmas_tree_style" onchange="updateTreeStyle(this.value)">
+            <option value="dots"    {% if _ct_style == 'dots'    %}selected{% endif %}>Dots — colored circles</option>
+            <option value="symbols" {% if _ct_style == 'symbols' %}selected{% endif %}>Symbols — ✓ / ✗</option>
+            <option value="emoji"   {% if _ct_style == 'emoji'   %}selected{% endif %}>Emoji — ✅ / ❌</option>
+            <option value="custom"  {% if _ct_style == 'custom'  %}selected{% endif %}>Custom — upload your own icons</option>
+          </select>
+          <div id="tree-custom-icons" {% if _ct_style != 'custom' %}style="display:none"{% endif %}>
+          <p class="hint" style="margin-bottom:4px;margin-top:10px">Loading</p>
+          <div style="display:flex;gap:6px;margin-bottom:4px">
+            <input type="text" name="appearance_tree_icon_loading" id="appearance_tree_icon_loading"
+                   value="{{ appearance.get('tree_icon_loading', '') }}"
+                   placeholder="Image URL or upload →"
+                   style="flex:1;font-size:12px" autocomplete="off">
+            <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+              ↑ Upload
+              <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svg" style="display:none"
+                     onchange="uploadTreeIcon(this,'tree_icon_loading')">
+            </label>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <input type="checkbox" id="appearance_tree_icon_loading_spin" name="appearance_tree_icon_loading_spin" value="1" {% if appearance.get('tree_icon_loading_spin') %}checked{% endif %}>
+            <label for="appearance_tree_icon_loading_spin" style="margin:0;font-weight:400;font-size:12px;color:var(--muted)">Spin the image</label>
+          </div>
+          <p class="hint" style="margin-bottom:4px">Success</p>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input type="text" name="appearance_tree_icon_ok" id="appearance_tree_icon_ok"
+                   value="{{ appearance.get('tree_icon_ok', '') }}"
+                   placeholder="Image URL or upload →"
+                   style="flex:1;font-size:12px" autocomplete="off">
+            <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+              ↑ Upload
+              <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svg" style="display:none"
+                     onchange="uploadTreeIcon(this,'tree_icon_ok')">
+            </label>
+          </div>
+          <p class="hint" style="margin-bottom:4px">Fail</p>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <input type="text" name="appearance_tree_icon_fail" id="appearance_tree_icon_fail"
+                   value="{{ appearance.get('tree_icon_fail', '') }}"
+                   placeholder="Image URL or upload →"
+                   style="flex:1;font-size:12px" autocomplete="off">
+            <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+              ↑ Upload
+              <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svg" style="display:none"
+                     onchange="uploadTreeIcon(this,'tree_icon_fail')">
+            </label>
+          </div>
+          </div>
+        </div>
+        <script>
+        function updateTreeStyle(val) {
+          var el = document.getElementById('tree-custom-icons');
+          if (el) el.style.display = val === 'custom' ? '' : 'none';
+        }
+        function updateStreamMode(liveVal) {
+          var liSel = document.getElementById('appearance_loading_indicator');
+          var curLi = liSel ? liSel.value : 'bar';
+          if (liSel) {
+            if (liveVal === 'live') {
+              liSel.innerHTML = '<option value="tree">Tree — live sidebar showing each engine&#39;s status as results come in</option>'
+                              + '<option value="console">Console — timestamped event log (replaces tree)</option>'
+                              + '<option value="none">None — no side panel</option>';
+              liSel.value = (curLi === 'console' || curLi === 'none') ? curLi : 'tree';
+            } else {
+              liSel.innerHTML = '<option value="bar">Bar — loading bar with quip</option>'
+                              + '<option value="tracker">Tracker — engine chips, results appear when done</option>'
+                              + '<option value="console">Console — event log on splash, results appear when done</option>'
+                              + '<option value="none">None — no loading indicator</option>';
+              liSel.value = (['tracker','console','none'].includes(curLi)) ? curLi : 'bar';
+            }
+          }
+          updateIndicator(liSel ? liSel.value : 'bar', liveVal);
+        }
+        function updateIndicator(liVal, liveVal) {
+          if (liveVal === undefined) {
+            var srEl = document.getElementById('appearance_streaming_results');
+            liveVal = srEl ? srEl.value : 'off';
+          }
+          var bw = document.getElementById('bar-wrap');
+          if (bw) bw.style.display = (liveVal !== 'live' && liVal === 'bar') ? '' : 'none';
+          var tw = document.getElementById('ct-style-wrap2');
+          if (tw) tw.style.display = (liveVal === 'live' && liVal === 'tree') ? '' : 'none';
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+          var liSel = document.getElementById('appearance_loading_indicator');
+          if (liSel) updateIndicator(liSel.value);
+          var ctSel = document.getElementById('appearance_christmas_tree_style2');
+          if (ctSel) updateTreeStyle(ctSel.value);
+        });
+        </script>
+
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <label for="appearance_loading_bg_url" style="margin-top:0">Loading background</label>
+          <p class="hint" style="margin-bottom:8px">Image, GIF, or video shown while results load. Fades out when done. Leave blank to use your theme color.</p>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input type="text" id="appearance_loading_bg_url" name="appearance_loading_bg_url"
+                   value="{{ appearance.get('loading_bg_url', '') }}"
+                   placeholder="URL or upload →"
+                   style="flex:1;font-size:13px" autocomplete="off">
+            <label style="cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;white-space:nowrap">
+              ↑ Upload
+              <input type="file" accept="image/*,.gif,.mp4,.webm,.mov,.ogg" style="display:none"
+                     onchange="uploadLoadingBg(this)">
+            </label>
+          </div>
+          <p class="hint" id="loading-bg-upload-status" style="margin-bottom:8px"></p>
+          <label for="appearance_loading_bg_opacity">
+            Opacity — <span id="loading-bg-op-label">{{ (appearance.get('loading_bg_opacity', 1.0) * 100) | int }}%</span>
+          </label>
+          <input type="range" id="appearance_loading_bg_opacity" name="appearance_loading_bg_opacity"
+                 min="0" max="1" step="0.01"
+                 value="{{ appearance.get('loading_bg_opacity', 1.0) }}"
+                 style="width:100%;accent-color:var(--accent)"
+                 oninput="document.getElementById('loading-bg-op-label').textContent = Math.round(this.value*100)+'%'">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input type="checkbox" id="appearance_loading_bg_loop" name="appearance_loading_bg_loop" value="1" {% if appearance.get('loading_bg_loop', True) %}checked{% endif %}>
+            <label for="appearance_loading_bg_loop" style="margin:0;font-weight:400;font-size:13px;color:var(--muted)">Loop video</label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Colors ─────────────────────────────────────────── -->
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('colors')">
+        Colors <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-colors">
+        <div class="color-grid">
+          {% set color_labels = [
+            ("--bg",          "Background"),
+            ("--surface",     "Surface"),
+            ("--border",      "Border"),
+            ("--text",        "Text"),
+            ("--muted",       "Muted text"),
+            ("--title",       "Title / brand"),
+            ("--accent",      "Accent"),
+            ("--accent-dim",  "Accent (dim)"),
+            ("--visited",     "Visited links"),
+            ("--url",         "URL green"),
+            ("--error",       "Error red"),
+            ("--engine",      "Engine badge bg"),
+            ("--engine-text", "Engine badge text"),
+          ] %}
+          {% for var, label in color_labels %}
+          <div class="color-row">
+            <input type="color" name="{{ var }}" value="{{ appearance.colors[var] }}"
+                   oninput="liveColor('{{ var }}', this.value)">
+            <span>{{ label }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 id="s-search">Search Preferences</h3>
+      <button type="button" class="collapse-hdr" onclick="toggleCollapse('sp-profiles')" style="margin-top:0;border-top:none">
+        Profiles &amp; engines <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body" id="cb-sp-profiles">
+      <label style="margin-top:0">Search profiles</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px">
+        <select id="profile-select" style="flex:1;min-width:140px">
+          <option value="">— select a profile —</option>
+        </select>
+        <button type="button" class="secondary" id="profile-load-btn" onclick="profileLoad()" disabled>Load</button>
+        <button type="button" class="secondary" id="profile-delete-btn" onclick="profileDelete()" disabled style="color:var(--error);border-color:var(--error)">Delete</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <input type="text" id="profile-name-input" placeholder="Profile name…" autocomplete="off"
+               style="flex:1" oninput="document.getElementById('profile-save-btn').disabled=!this.value.trim()">
+        <button type="button" class="secondary" id="profile-save-btn" onclick="profileSaveAndSubmit()" disabled style="white-space:nowrap">Save current</button>
+      </div>
+      <p class="hint" id="profile-hint" style="margin-top:6px">Saves engines, priority sources, ranking and scoring settings as a named preset.</p>
+
+      <label for="engines" style="margin-top:20px">Engines</label>
+      <textarea id="engines" name="engines" rows="5" spellcheck="false" autocomplete="off"
+                placeholder="duckduckgo&#10;startpage&#10;brave">{{ prefs.engines | replace(',', '\n') }}</textarea>
+      <p class="hint">One engine per line. When engine ranking is on, order matters — engines listed first score higher.
+        Add <code>[category]</code> after an engine name to use it only for that tab —
+        e.g. <code>youtube [videos]</code>, <code>bandcamp [music]</code>, <code>openstreetmap [map]</code>.
+        Without a rider, common engines (bing, google, duckduckgo, brave, qwant) are automatically
+        remapped to their category variants for news; for images/videos/music/files/map tabs,
+        only engines already native to that category are used — everything else is dropped so
+        SearXNG falls back to whatever specialist engines your instance has enabled.</p>
+
+      <label for="blocked_engines" style="margin-top:20px">Blocked engines</label>
+      <textarea id="blocked_engines" name="blocked_engines" rows="3" spellcheck="false" autocomplete="off"
+                placeholder="lemmy comments&#10;lemmy posts&#10;arxiv">{{ prefs.get('blocked_engines', '') }}</textarea>
+      <p class="hint">Results from these engines are always hidden. One engine name per line. Use exact names as shown in the tree (e.g. <code>lemmy comments</code>, <code>arxiv</code>).</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('sp-results')">
+        Results display <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-sp-results">
+        {% set _sr = prefs.get('streaming_results', 'off') %}
+        <label for="appearance_streaming_results" style="margin-top:0">Live results</label>
+        <select id="appearance_streaming_results" name="appearance_streaming_results" onchange="updateStreamMode(this.value)">
+          <option value="off"  {% if _sr == 'off'  %}selected{% endif %}>Off — load all at once when done</option>
+          <option value="live" {% if _sr == 'live' %}selected{% endif %}>On — stream results as instances respond</option>
+        </select>
+        <p class="hint">Requires multi-instance search (2+ instances). In live mode, results appear card by card as each instance reports in.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('sp-language')">
+        Language &amp; content <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-sp-language">
+      <label for="language" style="margin-top:0">Results language</label>
+      <input type="text" id="language" name="language" value="{{ prefs.language }}"
+             placeholder="en-US" autocomplete="off" list="language-suggestions">
+      <datalist id="language-suggestions">
+        <option value="en-US">
+        <option value="en-GB">
+        <option value="en-AU">
+        <option value="fr-FR">
+        <option value="de-DE">
+        <option value="es-ES">
+        <option value="pt-BR">
+        <option value="ja-JP">
+        <option value="zh-CN">
+        <option value="ko-KR">
+        <option value="ru-RU">
+        <option value="ar-SA">
+        <option value="all">
+      </datalist>
+      <p class="hint">BCP-47 tag like <code>en-US</code> or <code>fr-FR</code>. Comma-separate multiple languages to search all of them in parallel and merge results — e.g. <code>en-US, fr-FR</code>. Each language uses its own Tor circuit and instance. Use <code>all</code> for no language preference. Note: Tor exit node GeoIP may still influence some backend engines regardless of this setting.</p>
+
+      <label for="safesearch">Safe search</label>
+      <select id="safesearch" name="safesearch">
+        <option value="0" {% if prefs.safesearch == "0" %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.safesearch == "1" %}selected{% endif %}>Moderate</option>
+        <option value="2" {% if prefs.safesearch == "2" %}selected{% endif %}>Strict</option>
+      </select>
+
+      <label for="categories">Categories (comma-separated)</label>
+      <input type="text" id="categories" name="categories" value="{{ prefs.categories }}"
+             placeholder="general" autocomplete="off">
+
+      <label>Category tabs</label>
+      {% set _all_cats = [("all","All"),("general","General"),("news","News"),("images","Images"),("videos","Videos"),("map","Map"),("music","Music"),("science","Science"),("it","IT"),("files","Files"),("social media","Social")] %}
+      {% set _tc = prefs.tab_categories if prefs.tab_categories else ["all","general","news","images","videos","map","music","science","it","files","social media"] %}
+      <div id="cat-sort-list" class="cat-sort-list">
+        {% for val in _tc %}
+          {% for cv, cl in _all_cats %}{% if cv == val %}
+          <div class="cat-sort-item" draggable="true" data-val="{{ cv }}">
+            <span class="drag-handle">&#8942;</span>
+            <input type="checkbox" checked id="csc-{{ cv }}" onchange="onCatChange(this)">
+            <label class="cat-name" for="csc-{{ cv }}">{{ cl }}</label>
+          </div>
+          {% endif %}{% endfor %}
+        {% endfor %}
+        {% for cv, cl in _all_cats %}{% if cv not in _tc %}
+          <div class="cat-sort-item unchecked" draggable="true" data-val="{{ cv }}">
+            <span class="drag-handle">&#8942;</span>
+            <input type="checkbox" id="csc-{{ cv }}" onchange="onCatChange(this)">
+            <label class="cat-name" for="csc-{{ cv }}">{{ cl }}</label>
+          </div>
+        {% endif %}{% endfor %}
+      </div>
+      <input type="hidden" name="tab_categories" id="tab-categories-value">
+      <p class="hint">Drag to reorder. Uncheck to hide a tab from the results page.</p>
+
+      <label for="default_category">Default search tab</label>
+      <select id="default_category" name="default_category">
+        {% set dc = prefs.get('default_category', 'all') %}
+        {% for val in _tc %}
+          {% for cv, cl in _all_cats %}{% if cv == val %}
+          <option value="{{ cv }}" {% if dc == cv %}selected{% endif %}>{{ cl }}</option>
+          {% endif %}{% endfor %}
+        {% endfor %}
+      </select>
+      <p class="hint">Which tab is active when you submit a fresh search from the home page. Switching tabs on the results page always overrides this.</p>
+
+      <label for="dearrow" style="margin-top:20px;display:block">DeArrow video enrichment</label>
+      <select id="dearrow" name="dearrow">
+        <option value="0" {% if not prefs.get('dearrow', False) %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.get('dearrow', False) %}selected{% endif %}>On — replace YouTube titles and thumbnails with DeArrow crowdsourced data</option>
+      </select>
+      <p class="hint"><a href="https://dearrow.ajay.app" rel="noreferrer noopener" target="_blank">DeArrow</a> crowdsources better video titles (no clickbait) and thumbnail timestamps (no faces/text overlays). When enabled, video results are enriched after loading using the same routing setting as your searches.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('sp-sources')">
+        Sources &amp; filtering <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-sp-sources">
+      <label for="priority_sources" style="margin-top:0;display:block">Priority sources</label>
+      <textarea id="priority_sources" name="priority_sources"
+                rows="5" spellcheck="false" autocomplete="off"
+                placeholder="wikipedia.org&#10;github.com&#10;arxiv.org">{{ priority_sources_text }}</textarea>
+      <p class="hint">One domain per line. Results from these domains are always pushed to the top of the page, in the order listed. Subdomains match automatically — <code>wikipedia.org</code> matches <code>en.wikipedia.org</code>. A toggle on the results page lets you turn this off per-search.</p>
+
+      <label for="priority_source_cap">
+        Priority source cap —
+        <span id="psc-label" style="color:var(--accent);font-weight:600">{{ prefs.priority_source_cap }} result{{ 's' if prefs.priority_source_cap != 1 else '' }}</span>
+      </label>
+      <input type="range" id="priority_source_cap" name="priority_source_cap"
+             min="1" max="20" value="{{ prefs.priority_source_cap }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="updatePscLabel(this.value)">
+      <p class="hint">Maximum results boosted per source. With cap 1 and two sources, up to 1 result from each source is promoted — sources appear in the order listed above. Default is 1.</p>
+
+      <label for="priority_source_cutoff">
+        Source relevance cutoff —
+        <span id="psc-cutoff-label" style="color:var(--accent);font-weight:600">{{ "%.2f"|format(prefs.priority_source_cutoff) }}</span>
+      </label>
+      <input type="range" id="priority_source_cutoff" name="priority_source_cutoff"
+             min="0" max="1" step="0.05"
+             value="{{ "%.2f"|format(prefs.priority_source_cutoff) }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="updatePsCutoff(this.value)">
+      <p class="hint" id="psc-cutoff-hint"></p>
+
+      <label for="demote_domains">Demote domains</label>
+      <textarea id="demote_domains" name="demote_domains"
+                rows="4" spellcheck="false" autocomplete="off"
+                placeholder="reddit.com&#10;twitter.com&#10;facebook.com">{{ '\n'.join(prefs.demote_domains or []) }}</textarea>
+      <p class="hint">One domain per line. Results from these domains are pushed to the bottom of every search, after all other ranking. Subdomains match automatically. Useful for filtering out social media, forums, or any domain that consistently clutters your results.</p>
+
+      <label>Skip demotion in categories</label>
+      {% set dec = prefs.get('demote_except_categories', ['social media']) %}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+        {% for cv, cl in [('all','All'),('general','General'),('news','News'),('images','Images'),('videos','Videos'),('map','Map'),('music','Music'),('science','Science'),('it','IT'),('files','Files'),('social media','Social')] %}
+        <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--text);cursor:pointer;margin:0;font-weight:normal">
+          <input type="checkbox" name="demote_except_categories" value="{{ cv }}" {% if cv in dec %}checked{% endif %} style="width:auto;accent-color:var(--accent)">
+          {{ cl }}
+        </label>
+        {% endfor %}
+      </div>
+      <p class="hint">Demotion is skipped entirely when searching in these categories. Social is on by default so reddit.com etc. still show up normally when you're explicitly browsing the social tab.</p>
+
+      <label for="domain_cap">
+        Domain cap —
+        <span id="dc-label" style="color:var(--accent);font-weight:600">{% set dc = prefs.get('domain_cap', 3) %}{% if dc == 0 %}off{% else %}{{ dc }} per domain{% endif %}</span>
+      </label>
+      <input type="range" id="domain_cap" name="domain_cap"
+             min="0" max="20" value="{{ dc }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="updateDomainCap(this.value)">
+      <p class="hint" id="dc-hint"></p>
+
+      <label for="fuzzy_dedup">URL deduplication</label>
+      <select id="fuzzy_dedup" name="fuzzy_dedup">
+        <option value="1" {% if prefs.get('fuzzy_dedup', True) %}selected{% endif %}>Fuzzy — collapse www variants and strip tracking params before dedup</option>
+        <option value="0" {% if not prefs.get('fuzzy_dedup', True) %}selected{% endif %}>Exact — treat every URL as distinct</option>
+      </select>
+      <p class="hint">Fuzzy mode merges results that are the same page but differ only by <code>www.</code>, <code>http/https</code>, or tracking parameters like <code>utm_source</code>, <code>fbclid</code>, etc. Disable if you want to see every URL variant as a separate result.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('sp-ranking')">
+        Ranking <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-sp-ranking">
+      <label for="engine_ranking" style="margin-top:0">Engine ranking</label>
+      <select id="engine_ranking" name="engine_ranking">
+        <option value="0" {% if not prefs.engine_ranking %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.engine_ranking %}selected{% endif %}>On — results from earlier engines rank higher</option>
+      </select>
+      <p class="hint">Engines listed first in your engine list score higher. When off, all engines contribute equally to consensus scoring.</p>
+
+      <label for="consensus_ranking">Consensus ranking</label>
+      <select id="consensus_ranking" name="consensus_ranking">
+        <option value="0" {% if not prefs.consensus_ranking %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.consensus_ranking %}selected{% endif %}>On — results found by more engines rank higher</option>
+      </select>
+      <p class="hint">Each search engine that found a result scores points for it (rank-weighted if engine ranking is on, flat 1 if off). Each additional SearXNG instance that returned the result also adds 1 point — so a result agreed on by 3 instances and 2 engines scores higher than one found by 1 instance and 2 engines.</p>
+
+      <label for="lexical_scoring">Lexical scoring</label>
+      <select id="lexical_scoring" name="lexical_scoring">
+        <option value="0" {% if not prefs.lexical_scoring %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.lexical_scoring %}selected{% endif %}>On — BM25 term match against title and snippet</option>
+      </select>
+      <p class="hint">Ranks results by how closely they match your query terms. Title matches count 3× more than snippet matches. Works with all other ranking options.</p>
+
+      <label for="semantic_reranking">Semantic reranking</label>
+      <select id="semantic_reranking" name="semantic_reranking"{% if not semantic_available %} disabled{% endif %}>
+        <option value="0" {% if not prefs.semantic_reranking %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.semantic_reranking %}selected{% endif %}>On — rerank by meaning using a local embedding model</option>
+      </select>
+
+      {% if not semantic_available %}
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <button type="button" class="secondary" id="sem-install-btn" onclick="semInstall()">Install sentence-transformers</button>
+        <span id="sem-install-status" class="hint" style="margin:0"></span>
+      </div>
+      <div id="sem-install-log" style="display:none;margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto;white-space:pre-wrap"></div>
+      <p class="hint">~500 MB download (PyTorch + transformers). Scrambler will need a restart after install.</p>
+      {% else %}
+      <p class="hint">Reranks results by semantic similarity to your query using a local embedding model. Applied after all other ranking passes.</p>
+      {% endif %}
+
+      <label for="semantic_model" style="margin-top:{% if semantic_available %}12px{% else %}8px{% endif %}">Embedding model</label>
+      <input type="text" id="semantic_model" name="semantic_model"
+             value="{{ prefs.semantic_model }}" autocomplete="off"
+             placeholder="all-MiniLM-L6-v2"
+             list="sem-model-suggestions"
+             {% if not semantic_available %}disabled{% endif %}>
+      <datalist id="sem-model-suggestions">
+        <option value="all-MiniLM-L6-v2">
+        <option value="all-MiniLM-L12-v2">
+        <option value="all-mpnet-base-v2">
+        <option value="multi-qa-MiniLM-L6-cos-v1">
+        <option value="paraphrase-MiniLM-L6-v2">
+        <option value="BAAI/bge-small-en-v1.5">
+        <option value="BAAI/bge-base-en-v1.5">
+      </datalist>
+      <p class="hint">Any <a href="https://www.sbert.net/docs/pretrained_models.html" target="_blank" style="color:var(--accent)">sentence-transformers model</a> or Hugging Face model ID. Changing the model downloads it on next search. Fast: MiniLM-L6 (~80 MB). Best: mpnet-base (~420 MB).</p>
+
+      <label for="semantic_cutoff">
+        Relevance cutoff —
+        <span id="sem-cutoff-label" style="color:var(--accent);font-weight:600">{{ "%.2f"|format(prefs.semantic_cutoff) }}</span>
+      </label>
+      <input type="range" id="semantic_cutoff" name="semantic_cutoff"
+             min="0" max="1" step="0.05"
+             value="{{ "%.2f"|format(prefs.semantic_cutoff) }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="updateSemCutoff(this.value)"
+             {% if not semantic_available %}disabled{% endif %}>
+      <p class="hint" id="sem-cutoff-hint"></p>
+
+      <label for="freshness_boost">Freshness boost</label>
+      <select id="freshness_boost" name="freshness_boost">
+        <option value="0" {% if not prefs.get('freshness_boost') %}selected{% endif %}>Off</option>
+        <option value="1" {% if prefs.get('freshness_boost') %}selected{% endif %}>On — blend publication date into ranking for time-sensitive queries</option>
+      </select>
+      <p class="hint">When a query contains temporal signals (today, latest, breaking, a year like 2025…) Scrambler blends recency into ranking so recent results appear higher. Only affects queries that read as time-sensitive. Undated results are not penalised — they land between recent and old results.</p>
+      </div>
+
+      <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('sp-performance')">
+        Performance <span class="chev">▾</span>
+      </button>
+      <div class="collapse-body collapsed" id="cb-sp-performance">
+      <label for="result_cache" style="margin-top:0">Result cache</label>
+      <select id="result_cache" name="result_cache">
+        <option value="1" {% if prefs.result_cache %}selected{% endif %}>On — cache results (TTL varies by query type)</option>
+        <option value="0" {% if not prefs.result_cache %}selected{% endif %}>Off — always fetch fresh results</option>
+      </select>
+      <p class="hint">Caches identical queries. TTL is 30 s for news/temporal queries, 2 min for general queries, 5 min for reference/definition queries. Repeated searches and back-button navigations are instant. Disable to always hit instances fresh.</p>
+
+      <label for="multi_instance">
+        Instances per search —
+        <span id="mi-label" style="color:var(--accent);font-weight:600">{{ prefs.multi_instance }}</span>
+      </label>
+      {% set mi_max = [instance_count, 1] | max %}
+      {% set mi_val = [[prefs.multi_instance, 1] | max, mi_max] | min %}
+      <input type="range" id="multi_instance" name="multi_instance"
+             min="1" max="{{ mi_max }}" value="{{ mi_val }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="updateMiLabel(this.value); syncCwMax(this.value)">
+      <p class="hint" id="mi-hint" style="margin-top:6px"></p>
+      <p class="hint">Queries run in parallel across instances. Each operator sees your query as a Tor exit IP, not your real IP.</p>
+
+      <label for="weighted_selection">Instance selection</label>
+      <select id="weighted_selection" name="weighted_selection">
+        <option value="1" {% if prefs.weighted_selection %}selected{% endif %}>Weighted — prefer faster instances</option>
+        <option value="0" {% if not prefs.weighted_selection %}selected{% endif %}>Random — equal chance for all</option>
+      </select>
+      <p class="hint">Weighted selection tracks each instance's average response time and picks faster ones more often. Disable for purely random routing.</p>
+
+      <label for="engine_failover_limit">
+        Engine failover limit —
+        <span id="efl-label" style="color:var(--accent);font-weight:600">{{ prefs.get('engine_failover_limit', 3) }}</span>
+      </label>
+      {% set efl_max = [instance_count, 1] | max %}
+      {% set efl_val = [[prefs.get('engine_failover_limit', 3), 0] | max, efl_max] | min %}
+      <input type="range" id="engine_failover_limit" name="engine_failover_limit"
+             min="0" max="{{ efl_max }}" value="{{ efl_val }}"
+             style="width:100%;accent-color:var(--accent);margin-top:4px"
+             oninput="document.getElementById('efl-label').textContent=this.value">
+      <p class="hint">How many additional instances to try when a search fails. Applies in two situations: (1) if all initial concurrent instances fail, this many more are tried one at a time with the full engine list; (2) after the first success, this many more instances are tried for any engines that returned no results, sending only the missing engines each time. Set to 0 to disable all fallback. Maximum is capped to your instance count ({{ instance_count }}).</p>
+
+      <label for="failover_phase_timeout" style="margin-top:20px">Failover phase budget <span style="color:var(--muted);font-size:11px">(seconds, 0 = unlimited)</span></label>
+      <input type="number" id="failover_phase_timeout" name="failover_phase_timeout"
+             min="0" max="300" step="5"
+             value="{{ prefs.get('failover_phase_timeout', 60) }}"
+             style="width:100px">
+      <p class="hint">Total time allowed for the engine failover phase. With Tor circuits taking 8–13 s each, 60 s allows ~4–7 attempts. Set to 0 for no time limit — failover runs until all engines are accounted for or the instance list is exhausted. Less relevant in live mode where results stream in as they arrive. Default 60 s.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 id="s-system">System</h3>
+
+      <label for="server_port">Port</label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <input type="number" id="server_port" name="server_port"
+               value="{{ server_port }}" min="1024" max="65535"
+               style="width:100px"
+               oninput="portChanged(this.value)">
+        <span id="port-warning" class="hint" style="margin:0;display:none"></span>
+      </div>
+      <p class="hint">Default is 7777. Changes take effect after restarting Scrambler.</p>
+
+      <label style="margin-top:20px;display:block">Desktop launcher</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        <button type="button" class="secondary" id="launcher-btn" onclick="toggleLauncher()">Checking…</button>
+        <span id="launcher-status" class="hint" style="margin:0"></span>
+      </div>
+      <p class="hint" style="margin-top:8px">Adds an icon to your app launcher — no terminal needed. The icon and name come from your current theme, so reinstall after switching themes to update it.</p>
+
+      <label style="margin-top:20px;display:block">Start on login</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        <button type="button" class="secondary" id="autostart-btn" onclick="toggleAutostart()">Checking…</button>
+        <span id="autostart-status" class="hint" style="margin:0"></span>
+      </div>
+      <p class="hint" style="margin-top:8px">Registers a systemd user service so Scrambler starts automatically when you log in.</p>
+
+      <label style="margin-top:20px;display:block">Restart server</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        <button type="button" class="secondary" id="restart-btn" onclick="restartServer()">Restart now</button>
+        <span id="restart-status" class="hint" style="margin:0"></span>
+      </div>
+      <p class="hint" style="margin-top:8px">Kills and restarts the Scrambler process. The page reconnects automatically when it's back — useful after changing the port.</p>
+    </div>
+
+  </form>
+
+  <div class="section" style="margin-top:20px">
+    <h3 id="s-backup">Backup &amp; Restore</h3>
+    <p class="hint" style="margin-top:0;margin-bottom:14px">API keys are always stripped from exports. Importing merges data — existing items are not deleted.</p>
+
+    <label style="margin-bottom:8px;display:block">Export current</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button type="button" class="secondary" onclick="exportCurrentTheme()">Export Current Theme</button>
+      <button type="button" class="secondary" onclick="exportCurrentProfile()">Export Current Profile</button>
+    </div>
+    <label style="margin-bottom:8px;display:block">Export all saved</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="secondary" onclick="scramblerExport('themes')">Export Themes</button>
+      <button type="button" class="secondary" onclick="scramblerExport('profiles')">Export Profiles</button>
+      <button type="button" class="secondary" onclick="scramblerExport('settings')">Export Settings</button>
+      <button type="button" class="secondary" onclick="scramblerExport('all')">Export All (full backup)</button>
+    </div>
+
+    <label style="margin-top:20px;display:block">Import</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+      <input type="file" id="import-file" accept=".json" style="font-size:13px;color:var(--text)">
+      <button type="button" class="secondary" onclick="scramblerImport()">Import</button>
+      <span id="import-status" class="hint" style="margin:0"></span>
+    </div>
+    <p class="hint" style="margin-top:8px">Auto-detects themes, profiles, settings, or full backup. Page reloads after a successful import.</p>
+  </div>
+</main>
+
+<script>
+function updateAiUI(provider) {
+  document.getElementById('ai-key-row').style.display = (provider === 'anthropic' || provider === 'openai_compat') ? 'block' : 'none';
+  document.getElementById('ai-url-row').style.display = (provider === 'openai_compat' || provider === 'ollama') ? 'block' : 'none';
+}
+
+function updateRerankUI(provider) {
+  document.getElementById('rr-key-row').style.display = (provider === 'anthropic' || provider === 'openai_compat' || provider === 'rerank_api') ? 'block' : 'none';
+  document.getElementById('rr-url-row').style.display = (provider === 'openai_compat' || provider === 'ollama' || provider === 'rerank_api') ? 'block' : 'none';
+}
+
+function updateRerankRoutingVisibility() {
+  var on = document.getElementById('ai_reranking').checked;
+  var useSame = document.getElementById('ai_rerank_use_search_ai').checked;
+  document.getElementById('ai-rerank-routing-row').style.display = (on && !useSame) ? 'block' : 'none';
+}
+
+async function runDiscover() {
+  const btn = document.getElementById('discover-btn');
+  const grade = document.getElementById('discover-grade').value;
+  const out = document.getElementById('discover-results');
+
+  btn.disabled = true;
+  btn.textContent = 'Fetching…';
+  out.innerHTML = '<p class="hint">Contacting searx.space…</p>';
+
+  try {
+    const resp = await fetch('/api/discover?min_grade=' + encodeURIComponent(grade));
+    const data = await resp.json();
+
+    if (data.error) {
+      out.innerHTML = '<p class="hint" style="color:var(--error)">Error: ' + data.error + '</p>';
+      return;
+    }
+    if (!data.instances.length) {
+      out.innerHTML = '<p class="hint">No instances matched.</p>';
+      return;
+    }
+
+    const existing = new Set(
+      document.getElementById('instances').value
+        .split('\n').map(s => s.trim()).filter(Boolean)
+    );
+
+    function gradeBadge(g) {
+      if (!g || g === '?') return `<span class="grade-badge">?</span>`;
+      if (g === 'V') return `<span class="grade-badge good" title="Verified — static resources match canonical SearXNG checksums">V</span>`;
+      const cls = (g === 'A+' || g === 'A') ? 'good' : (g === 'B' || g === 'C') ? 'ok' : 'bad';
+      return `<span class="grade-badge ${cls}">${g}</span>`;
+    }
+
+    let rows = '';
+    for (const inst of data.instances) {
+      const url = inst.url.replace(/\/$/, '');
+      const already = existing.has(url) || existing.has(inst.url);
+      const uptime  = inst.uptime   ? inst.uptime.toFixed(0) + '%' : '?';
+      const ms      = inst.response_ms != null ? inst.response_ms + 'ms' : '?';
+      const net     = inst.network === 'normal' ? '' : `<span style="color:var(--accent);font-size:10px">${inst.network}</span>`;
+      const noAnal  = inst.analytics ? `<span class="bool-no">✗</span>` : `<span class="bool-yes">✓</span>`;
+      const contact = inst.contact   ? `<span class="bool-yes">✓</span>` : `<span class="bool-no">—</span>`;
+      const ipv6    = inst.ipv6      ? `<span class="bool-yes">✓</span>` : `<span class="bool-no">—</span>`;
+      const dnssec  = inst.dnssec > 0 ? `<span class="bool-yes">✓</span>` : `<span class="bool-no">—</span>`;
+      const engines = (inst.engine_names || []);
+      const engStr  = engines.join(',').toLowerCase();
+      const rowId   = 'eng-' + Math.random().toString(36).slice(2);
+      rows += `<tr data-engines="${engStr}">
+        <td><input type="checkbox" class="disc-cb" value="${url}" data-engines="${engStr}" ${already ? 'disabled checked' : ''}></td>
+        <td class="url-cell" title="${url}">${url}</td>
+        <td>${gradeBadge(inst.grade)}</td>
+        <td>${gradeBadge(inst.tls_grade)}</td>
+        <td>${gradeBadge(inst.csp_grade)}</td>
+        <td>${uptime}</td>
+        <td style="color:var(--muted)">${ms}</td>
+        <td class="engine-count-cell" onclick="toggleEngineDetail('${rowId}')" title="Click to see engine list">${inst.engine_count || '?'}</td>
+        <td>${noAnal}</td>
+        <td>${contact}</td>
+        <td>${ipv6}</td>
+        <td>${dnssec}</td>
+        <td style="color:var(--muted)">${net}${inst.version ? inst.version.slice(0,10) : ''}</td>
+      </tr>
+      <tr id="${rowId}" class="engine-detail-row" style="display:none">
+        <td colspan="13">${engines.length ? engines.map(e => `<span class="engine-tag">${e}</span>`).join('') : '<span style="color:var(--muted);font-size:12px">No engine data available</span>'}</td>
+      </tr>`;
+    }
+
+    out.innerHTML = `
+      <div class="engine-filter-wrap">
+        <input type="search" id="engine-filter" placeholder="Filter by engine name…" oninput="filterByEngine(this.value)" autocomplete="off">
+        <span class="hint" style="margin:0" id="engine-filter-count"></span>
+      </div>
+      <table class="discover-table">
+        <thead><tr>
+          <th></th><th>URL</th>
+          <th title="HTTP security grade">HTTP</th>
+          <th title="TLS grade">TLS</th>
+          <th title="Resource integrity: V = static files match canonical SearXNG checksums">Integrity</th>
+          <th title="Uptime (today)">Uptime</th>
+          <th title="Search response time">Resp</th>
+          <th title="Click to expand engine list">Engines</th>
+          <th title="No analytics tracking">No anal.</th>
+          <th title="Operator contact info">Contact</th>
+          <th title="IPv6 support">IPv6</th>
+          <th title="DNSSEC">DNSSEC</th>
+          <th>Version</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <button type="button" class="secondary" onclick="addSelected()">Add selected to list</button>`;
+  } catch (e) {
+    out.innerHTML = '<p class="hint" style="color:var(--error)">Request failed: ' + e.message + '</p>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Browse public instances';
+  }
+}
+
+// ── Auto-pick ────────────────────────────────────────────────
+
+async function autoPick() {
+  const btn = document.getElementById('autopick-btn');
+  const out = document.getElementById('discover-results');
+  btn.disabled = true;
+  btn.textContent = 'Picking…';
+  out.innerHTML = '<p class="hint">Fetching instances from searx.space…</p>';
+
+  function score(inst) {
+    // No analytics is a hard requirement — handled by filter before scoring.
+    let s = 0;
+    // Security grades — F instances are filtered out before scoring
+    const http = {'A+': 40, 'A': 30, 'V': 35, 'B': 10, 'C': 5, 'D': -10};
+    const tls  = {'A+': 20, 'A': 15, 'B': 5, 'D': -8};
+    const csp  = {'A+': 15, 'A': 10, 'B': 5, 'D': -5};
+    s += http[inst.grade]     || 0;
+    s += tls[inst.tls_grade]  || 0;
+    s += csp[inst.csp_grade]  || 0;
+    // Accountability
+    if (inst.contact)    s += 20;
+    if (inst.dnssec > 0) s += 10;
+    if (inst.ipv6)       s += 5;
+    // Reliability
+    if (inst.uptime >= 99)      s += 10;
+    else if (inst.uptime >= 95) s += 5;
+    // Speed — up to 10 points, favours <200 ms
+    if (inst.response_ms) s += Math.max(0, 10 - inst.response_ms / 200);
+    return s;
+  }
+
+  try {
+    const resp = await fetch('/api/discover?min_grade=');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    const CRITICAL_FAIL = new Set(['F']);
+    const candidates = data.instances.filter(i =>
+      !i.analytics &&
+      !CRITICAL_FAIL.has(i.grade) &&
+      !CRITICAL_FAIL.has(i.tls_grade) &&
+      !CRITICAL_FAIL.has(i.csp_grade)
+    );
+    if (!candidates.length) {
+      out.innerHTML = '<p class="hint" style="color:var(--error)">No qualifying instances found (all failed a critical privacy check).</p>';
+      return;
+    }
+
+    const n = parseInt(document.getElementById('autopick-count').value, 10) || 5;
+    candidates.sort((a, b) => score(b) - score(a));
+    const top = candidates.slice(0, n);
+    const picked = top.map(i => i.url.replace(/\/$/, ''));
+    document.getElementById('instances').value = picked.join('\n');
+
+    const engineMap = {};
+    top.forEach(i => { engineMap[i.url.replace(/\/$/, '')] = i.engine_names || []; });
+    fetch('/api/instance-engines', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({engine_map: engineMap}),
+    }).catch(() => {});
+
+    out.innerHTML = `<p class="hint" style="color:var(--url)">✓ Auto-picked ${picked.length} instances — privacy first, speed second. Review above and save.</p>`;
+  } catch (e) {
+    out.innerHTML = `<p class="hint" style="color:var(--error)">Auto-pick failed: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Auto-pick';
+  }
+}
+
+// ── Appearance ──────────────────────────────────────────────
+
+function _isBgVideo(url) {
+  return /\.(mp4|webm|mov|ogg)(\?|$)/i.test(url);
+}
+
+function liveBg(url) {
+  var old = document.getElementById('_bg_preview');
+  if (old) old.remove();
+  if (!url) return;
+  var sizeVal = (document.getElementById('appearance_background_size') || {}).value || 'cover';
+  var opVal   = (document.getElementById('appearance_background_opacity') || {}).value || 0.15;
+  var el;
+  if (_isBgVideo(url)) {
+    var loopCb = document.getElementById('appearance_background_video_loop');
+    el = document.createElement('video');
+    el.autoplay = true; el.muted = true; el.loop = !loopCb || loopCb.checked; el.playsInline = true;
+    var src = document.createElement('source'); src.src = url; el.appendChild(src);
+    el.style.objectFit = sizeVal === 'contain' ? 'contain' : 'cover';
+  } else {
+    el = document.createElement('div');
+    el.style.backgroundImage    = `url('${url}')`;
+    el.style.backgroundPosition = 'center';
+    el.style.backgroundAttachment = 'fixed';
+    liveBgSize(sizeVal, el);
+  }
+  el.id = '_bg_preview';
+  Object.assign(el.style, {position:'fixed', inset:'0', zIndex:'-1', pointerEvents:'none',
+    width:'100%', height:'100%'});
+  el.style.opacity = opVal;
+  document.body.prepend(el);
+}
+
+function liveBgSize(val, el) {
+  el = el || document.getElementById('_bg_preview');
+  if (!el) return;
+  if (el.tagName === 'VIDEO') {
+    el.style.objectFit = val === 'contain' ? 'contain' : 'cover';
+  } else {
+    el.style.backgroundSize   = val === 'tile' ? 'auto' : val;
+    el.style.backgroundRepeat = val === 'tile' ? 'repeat' : 'no-repeat';
+  }
+}
+
+function liveBgOpacity(val, el) {
+  el = el || document.getElementById('_bg_preview');
+  if (!el) return;
+  el.style.opacity = val;
+  const lbl = document.getElementById('opacity-label');
+  if (lbl) lbl.textContent = Math.round(val * 100) + '%';
+}
+
+function liveColor(varName, value) {
+  document.documentElement.style.setProperty(varName, value);
+}
+
+function liveFont(value) {
+  const stack = value ? `${value}, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif` : '';
+  document.documentElement.style.setProperty('--font', stack || '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif');
+}
+
+function _makeFaviconHref(val) {
+  if (!val) return '';
+  if (val.startsWith('http') || val.startsWith('/')) return val;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${val}</text></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+function updateFaviconPreview(val) {
+  const el = document.getElementById('favicon-preview');
+  el.textContent = val.startsWith('http') ? '' : val;
+  el.style.backgroundImage = val.startsWith('http') ? `url(${val})` : '';
+  const link = document.querySelector('link[rel="icon"]');
+  if (link) link.href = _makeFaviconHref(val);
+}
+
+const PRESETS = {
+  dark: { colors: {
+    '--bg':'#111111','--surface':'#1c1c1c','--border':'#2a2a2a',
+    '--text':'#d8d8d8','--muted':'#666666','--title':'#5b9cf6',
+    '--accent':'#5b9cf6','--accent-dim':'#3a6ab5','--visited':'#9b72c8',
+    '--url':'#4caf7d','--error':'#e05a5a','--engine':'#333333','--engine-text':'#999999'
+  }},
+  light: { colors: {
+    '--bg':'#f5f5f5','--surface':'#ffffff','--border':'#e0e0e0',
+    '--text':'#1a1a1a','--muted':'#888888','--title':'#2563eb',
+    '--accent':'#2563eb','--accent-dim':'#1d4ed8','--visited':'#7c3aed',
+    '--url':'#16a34a','--error':'#dc2626','--engine':'#eeeeee','--engine-text':'#555555'
+  }},
+  nord: { colors: {
+    '--bg':'#2e3440','--surface':'#3b4252','--border':'#434c5e',
+    '--text':'#eceff4','--muted':'#4c566a','--title':'#88c0d0',
+    '--accent':'#88c0d0','--accent-dim':'#5e81ac','--visited':'#b48ead',
+    '--url':'#a3be8c','--error':'#bf616a','--engine':'#434c5e','--engine-text':'#d8dee9'
+  }},
+  catppuccin: { colors: {
+    '--bg':'#1e1e2e','--surface':'#313244','--border':'#45475a',
+    '--text':'#cdd6f4','--muted':'#6c7086','--title':'#cba6f7',
+    '--accent':'#89b4fa','--accent-dim':'#74c7ec','--visited':'#cba6f7',
+    '--url':'#a6e3a1','--error':'#f38ba8','--engine':'#45475a','--engine-text':'#a6adc8'
+  }},
+  solarized: { colors: {
+    '--bg':'#002b36','--surface':'#073642','--border':'#094555',
+    '--text':'#839496','--muted':'#586e75','--title':'#268bd2',
+    '--accent':'#268bd2','--accent-dim':'#2aa198','--visited':'#6c71c4',
+    '--url':'#859900','--error':'#dc322f','--engine':'#073642','--engine-text':'#657b83'
+  }},
+  breakfast: { colors: {
+    '--bg':          '#1a1208',
+    '--surface':     '#2c1f0d',
+    '--border':      '#4a3318',
+    '--text':        '#f5e6c8',
+    '--muted':       '#9a7a4a',
+    '--title':       '#f5c518',
+    '--accent':      '#f5c518',
+    '--accent-dim':  '#c9a012',
+    '--visited':     '#e8913a',
+    '--url':         '#8bbf5a',
+    '--error':       '#e05a5a',
+    '--engine':      '#2c1f0d',
+    '--engine-text': '#9a7a4a',
+  }},
+  hacker: { colors: {
+    '--bg':          '#030d03',
+    '--surface':     '#071407',
+    '--border':      '#0d3a0d',
+    '--text':        '#33ff33',
+    '--muted':       '#1a7a1a',
+    '--title':       '#39ff14',
+    '--accent':      '#39ff14',
+    '--accent-dim':  '#1da81d',
+    '--visited':     '#00cc44',
+    '--url':         '#00ff88',
+    '--error':       '#ff3333',
+    '--engine':      '#071407',
+    '--engine-text': '#1a7a1a',
+  }},
+};
+
+function applyPreset(name) {
+  const preset = PRESETS[name];
+  if (!preset) return;
+  applyTheme(preset);
+}
+
+// ── Discover ────────────────────────────────────────────────
+
+function addSelected() {
+  const textarea = document.getElementById('instances');
+  const existing = new Set(
+    textarea.value.split('\n').map(s => s.trim()).filter(Boolean)
+  );
+  const cbs = Array.from(document.querySelectorAll('.disc-cb:checked:not(:disabled)'));
+  const toAdd = cbs.map(cb => cb.value).filter(u => !existing.has(u));
+  if (!toAdd.length) return;
+
+  const sep = textarea.value.trim() ? '\n' : '';
+  textarea.value = textarea.value.trimEnd() + sep + toAdd.join('\n');
+  cbs.forEach(cb => { cb.disabled = true; });
+
+  const engineMap = {};
+  cbs.forEach(cb => {
+    const eng = cb.dataset.engines || '';
+    engineMap[cb.value] = eng ? eng.split(',').filter(Boolean) : [];
+  });
+  fetch('/api/instance-engines', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({engine_map: engineMap}),
+  }).catch(() => {});
+}
+
+function toggleEngineDetail(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function filterByEngine(query) {
+  const q = query.trim().toLowerCase();
+  const tbody = document.querySelector('.discover-table tbody');
+  if (!tbody) return;
+  let shown = 0;
+  const rows = tbody.querySelectorAll('tr:not(.engine-detail-row)');
+  rows.forEach(row => {
+    const eng = (row.dataset.engines || '').toLowerCase();
+    const match = !q || eng.includes(q);
+    row.style.display = match ? '' : 'none';
+    // hide associated detail row when parent is hidden
+    const next = row.nextElementSibling;
+    if (next && next.classList.contains('engine-detail-row') && !match) {
+      next.style.display = 'none';
+    }
+    if (match) shown++;
+  });
+  const counter = document.getElementById('engine-filter-count');
+  if (counter) counter.textContent = q ? `${shown} matching` : '';
+}
+
+// ── Background upload ────────────────────────────────────────
+
+async function uploadBackground(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('bg-upload-status');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-background', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    const urlEl = document.getElementById('appearance_background_image');
+    urlEl.value = data.url;
+    liveBg(data.url);
+    statusEl.style.color = 'var(--url)';
+    statusEl.textContent = `✓ Uploaded: ${file.name}`;
+  } catch (e) {
+    statusEl.style.color = 'var(--error)';
+    statusEl.textContent = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+async function uploadLoadingBg(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('loading-bg-upload-status');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-background', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('appearance_loading_bg_url').value = data.url;
+    statusEl.style.color = 'var(--url)';
+    statusEl.textContent = `✓ ${file.name}`;
+  } catch (e) {
+    statusEl.style.color = 'var(--error)';
+    statusEl.textContent = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+// ── Audio upload ─────────────────────────────────────────────
+
+async function uploadTreeIcon(input, key) {
+  const file = input.files[0];
+  if (!file) return;
+  const urlEl = document.getElementById('appearance_' + key);
+  if (urlEl) urlEl.placeholder = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-icon', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    if (urlEl) { urlEl.value = data.url; urlEl.placeholder = 'Image URL or upload →'; }
+  } catch (e) {
+    if (urlEl) urlEl.placeholder = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+async function uploadCursor(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const urlEl = document.getElementById('appearance_cursor_url');
+  urlEl.placeholder = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-cursor', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    urlEl.value = data.url;
+    urlEl.placeholder = 'Custom cursor URL — leave blank for default';
+  } catch (e) {
+    urlEl.placeholder = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+async function uploadCursorTrail(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const urlEl = document.getElementById('appearance_cursor_trail_url');
+  urlEl.placeholder = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-cursor', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    urlEl.value = data.url;
+    urlEl.placeholder = 'Custom trail image URL (overrides trail style above)';
+  } catch (e) {
+    urlEl.placeholder = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+async function uploadSoundFile(input, targetId) {
+  const file = input.files[0];
+  if (!file) return;
+  const el = document.querySelector(`[name="${targetId}"]`);
+  const orig = el.placeholder;
+  el.placeholder = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-audio', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    el.value = data.url;
+  } catch (e) {
+    el.placeholder = 'Upload failed: ' + e.message;
+  } finally {
+    if (!el.value) el.placeholder = orig;
+    input.value = '';
+  }
+}
+
+async function uploadAudio(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const urlEl = document.getElementById('appearance_background_audio_url');
+  urlEl.placeholder = 'Uploading…';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const resp = await fetch('/api/upload-audio', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    urlEl.value = data.url;
+    urlEl.placeholder = 'Paste a URL or upload a file →';
+  } catch (e) {
+    urlEl.placeholder = 'Upload failed: ' + e.message;
+  }
+  input.value = '';
+}
+
+// ── Font download ────────────────────────────────────────────
+
+async function downloadFont() {
+  const urlEl   = document.getElementById('appearance_font_import_url');
+  const cssEl   = document.getElementById('appearance_font_face_css');
+  const statusEl = document.getElementById('dl-font-status');
+  const btn     = document.getElementById('dl-font-btn');
+  const url     = urlEl.value.trim();
+  if (!url) { urlEl.focus(); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Downloading…';
+  statusEl.innerHTML = '<span style="color:var(--muted)">Downloading font files…</span>';
+
+  try {
+    const resp = await fetch('/api/download-font', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url}),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    cssEl.value = data.font_face_css;
+    if (data.font_family) {
+      const famEl = document.getElementById('appearance_font_family');
+      famEl.value = data.font_family;
+      liveFont(data.font_family);
+    }
+    urlEl.value = '';
+    statusEl.innerHTML = '<span style="color:var(--url)">✓ Font downloaded and self-hosted — no external requests.</span>';
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:var(--error)">Error: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Download & self-host';
+  }
+}
+
+// ── Themes ──────────────────────────────────────────────────
+
+function readCurrentAppearance() {
+  const colors = {};
+  document.querySelectorAll('.color-row input[type="color"]').forEach(inp => {
+    colors[inp.name] = inp.value;
+  });
+  function val(id, fallback) { var el = document.getElementById(id); return el ? el.value : (fallback !== undefined ? fallback : ''); }
+  function fval(id, fallback) { var v = parseFloat(val(id)); return isNaN(v) ? (fallback || 0) : v; }
+
+  var streamMode = val('appearance_streaming_results', 'off');
+  var indicator  = val('appearance_loading_indicator', 'bar');
+
+  // Store both-mode equivalents so applying to a different stream mode still makes sense
+  var _LIVE_MAP   = {bar: 'tree', tracker: 'tree', console: 'console', none: 'none', tree: 'tree'};
+  var _STATIC_MAP = {tree: 'tree', console: 'console', none: 'none', bar: 'bar', tracker: 'tracker'};
+  var loading_indicator_live   = streamMode === 'live'   ? indicator : (_LIVE_MAP[indicator]   || 'tree');
+  var loading_indicator_static = streamMode !== 'live'   ? indicator : (_STATIC_MAP[indicator] || 'bar');
+
+  return {
+    title:              val('appearance_title'),
+    subtitle:           val('appearance_subtitle'),
+    tagline:            val('appearance_tagline'),
+    favicon:            val('appearance_favicon'),
+    font_family:        val('appearance_font_family'),
+    font_import_url:    val('appearance_font_import_url'),
+    font_face_css:      val('appearance_font_face_css'),
+    background_image:   val('appearance_background_image'),
+    background_size:    val('appearance_background_size', 'cover'),
+    background_opacity: fval('appearance_background_opacity', 0.15),
+    loading_bar_style:  val('appearance_loading_bar_style', 'crawl'),
+    loading_quips:      (val('appearance_loading_quips') || '').split('\n').map(s => s.trim()).filter(Boolean),
+    christmas_tree_style: val('appearance_christmas_tree_style2', 'dots'),
+    loading_indicator:  indicator,
+    loading_indicator_live,
+    loading_indicator_static,
+    background_video_loop:   !!(document.getElementById('appearance_background_video_loop') || {}).checked,
+    loading_bg_url:          val('appearance_loading_bg_url'),
+    loading_bg_opacity:      fval('appearance_loading_bg_opacity', 1.0),
+    loading_bg_loop:         !!(document.getElementById('appearance_loading_bg_loop') || {}).checked,
+    background_audio_url:    val('appearance_background_audio_url'),
+    background_audio_volume: fval('appearance_background_audio_volume', 0.5),
+    background_audio_loop:   val('appearance_background_audio_loop', '1'),
+    tree_icon_loading:      val('appearance_tree_icon_loading'),
+    tree_icon_loading_spin: !!(document.getElementById('appearance_tree_icon_loading_spin') || {}).checked,
+    tree_icon_ok:           val('appearance_tree_icon_ok'),
+    tree_icon_fail:         val('appearance_tree_icon_fail'),
+    cursor_url:         val('appearance_cursor_url'),
+    cursor_trail:       val('appearance_cursor_trail', 'off'),
+    cursor_trail_url:   val('appearance_cursor_trail_url'),
+    typing_sound:       val('appearance_typing_sound', 'off'),
+    typing_sound_url:   val('appearance_typing_sound_url'),
+    search_sound:       val('appearance_search_sound', 'off'),
+    search_sound_url:   val('appearance_search_sound_url'),
+    click_sound:        val('appearance_click_sound', 'off'),
+    click_sound_url:    val('appearance_click_sound_url'),
+    sound_volume:       fval('appearance_sound_volume', 0.5),
+    colors,
+  };
+}
+
+function applyTheme(data) {
+  function setVal(id, v) { var el = document.getElementById(id); if (el && v !== undefined) el.value = v; }
+
+  // Simple text/select fields
+  const simpleFields = ['title','subtitle','tagline','favicon','font_family','font_import_url','font_face_css',
+    'background_image','background_size','loading_bar_style','loading_bg_url','loading_bg_opacity',
+    'background_audio_url','background_audio_volume','background_audio_loop','cursor_url','cursor_trail','cursor_trail_url',
+    'typing_sound','typing_sound_url','search_sound','search_sound_url','click_sound','click_sound_url','sound_volume'];
+  for (const key of simpleFields) {
+    if (data[key] !== undefined) setVal('appearance_' + key, data[key]);
+  }
+
+  if (data.favicon !== undefined) updateFaviconPreview(data.favicon);
+  if (data.font_family !== undefined) liveFont(data.font_family);
+  if (data.background_image !== undefined) liveBg(data.background_image);
+  if (data.background_size !== undefined) liveBgSize(data.background_size);
+  if (data.background_opacity !== undefined) {
+    setVal('appearance_background_opacity', data.background_opacity);
+    liveBgOpacity(data.background_opacity);
+  }
+
+  if (data.christmas_tree_style !== undefined) { setVal('appearance_christmas_tree_style2', data.christmas_tree_style); updateTreeStyle(data.christmas_tree_style); }
+  ['tree_icon_loading', 'tree_icon_ok', 'tree_icon_fail'].forEach(function(key) {
+    if (data[key] !== undefined) setVal('appearance_' + key, data[key]);
+  });
+  if (data.tree_icon_loading_spin !== undefined) {
+    var spinCb = document.getElementById('appearance_tree_icon_loading_spin');
+    if (spinCb) spinCb.checked = !!data.tree_icon_loading_spin;
+  }
+  if (data.background_video_loop !== undefined) {
+    var bvlCb = document.getElementById('appearance_background_video_loop');
+    if (bvlCb) bvlCb.checked = !!data.background_video_loop;
+  }
+  if (data.loading_bg_loop !== undefined) {
+    var lblCb = document.getElementById('appearance_loading_bg_loop');
+    if (lblCb) lblCb.checked = !!data.loading_bg_loop;
+  }
+  if (data.loading_quips !== undefined) {
+    var el = document.getElementById('appearance_loading_quips');
+    if (el) el.value = Array.isArray(data.loading_quips) ? data.loading_quips.join('\n') : data.loading_quips;
+  }
+
+  // Loading indicator — use the mode-appropriate saved value if available
+  if (data.loading_indicator !== undefined || data.loading_indicator_live !== undefined || data.loading_indicator_static !== undefined) {
+    var currentMode = (document.getElementById('appearance_streaming_results') || {}).value || 'off';
+    var indicator;
+    if (currentMode === 'live' && data.loading_indicator_live !== undefined) {
+      indicator = data.loading_indicator_live;
+    } else if (currentMode !== 'live' && data.loading_indicator_static !== undefined) {
+      indicator = data.loading_indicator_static;
+    } else {
+      indicator = data.loading_indicator;
+    }
+    if (indicator !== undefined) {
+      setVal('appearance_loading_indicator', indicator);
+      updateIndicator(indicator, currentMode);
+    }
+  }
+
+  if (data.colors) {
+    document.querySelectorAll('.color-row input[type="color"]').forEach(inp => {
+      const v = data.colors[inp.name];
+      if (v) { inp.value = v; document.documentElement.style.setProperty(inp.name, v); }
+    });
+  }
+}
+
+function renderThemes(themes) {
+  const bar = document.getElementById('themes-bar');
+  const entries = Object.entries(themes).filter(([, v]) => v._type !== 'colorway');
+  if (!entries.length) {
+    bar.innerHTML = '<p class="hint" style="margin:0">No saved themes yet.</p>';
+    return;
+  }
+  bar.innerHTML = entries.map(([name, data]) => {
+    const encoded = JSON.stringify(data).replace(/'/g, '&#39;');
+    const safeName = JSON.stringify(name);
+    return `<div class="theme-chip">
+      <button type="button" class="secondary" onclick='applyTheme(${encoded})' title="Apply">${name}</button>
+      <button type="button" class="secondary theme-del" onclick='deleteTheme(${safeName})' title="Delete">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderColorways(themes) {
+  const bar = document.getElementById('saved-colorways');
+  const entries = Object.entries(themes).filter(([, v]) => v._type === 'colorway');
+  if (!entries.length) { bar.innerHTML = ''; return; }
+  bar.innerHTML = entries.map(([name, data]) => {
+    const encoded = JSON.stringify({colors: data.colors}).replace(/'/g, '&#39;');
+    const safeName = JSON.stringify(name);
+    return `<div class="theme-chip">
+      <button type="button" class="secondary" onclick='applyTheme(${encoded})' title="Apply">${name}</button>
+      <button type="button" class="secondary theme-del" onclick='deleteTheme(${safeName})' title="Delete">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function loadThemes() {
+  try {
+    const resp = await fetch('/api/themes');
+    const data = await resp.json();
+    const themes = data.themes || {};
+    renderThemes(themes);
+    renderColorways(themes);
+  } catch (e) {
+    document.getElementById('themes-bar').innerHTML = '<p class="hint" style="margin:0;color:var(--error)">Could not load themes.</p>';
+  }
+}
+
+async function saveColorway() {
+  const nameEl = document.getElementById('colorway-name-input');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+  const colors = {};
+  document.querySelectorAll('.color-row input[type="color"]').forEach(inp => {
+    colors[inp.name] = inp.value;
+  });
+  try {
+    const resp = await fetch('/api/themes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, appearance: {_type: 'colorway', colors}}),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    nameEl.value = '';
+    await loadThemes();
+  } catch (e) { alert('Failed to save colorway: ' + e.message); }
+}
+
+async function saveTheme() {
+  const nameEl = document.getElementById('theme-name-input');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+  try {
+    const resp = await fetch('/api/themes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, appearance: readCurrentAppearance()}),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    nameEl.value = '';
+    await loadThemes();
+  } catch (e) { alert('Failed to save theme: ' + e.message); }
+}
+
+async function deleteTheme(name) {
+  if (!confirm(`Delete theme "${name}"?`)) return;
+  try {
+    await fetch('/api/themes/' + encodeURIComponent(name), {method: 'DELETE'});
+    await loadThemes();
+  } catch (e) {}
+}
+
+loadThemes();
+
+// ── AI Personalities ─────────────────────────────────────────
+
+async function loadPersonalities() {
+  try {
+    const data = await (await fetch('/api/ai-personalities')).json();
+    renderPersonalities(data);
+  } catch(_) {
+    const bar = document.getElementById('personalities-bar');
+    if (bar) bar.innerHTML = '<p class="hint" style="margin:0;color:var(--error)">Could not load personalities.</p>';
+  }
+}
+
+function renderPersonalities(data) {
+  const bar = document.getElementById('personalities-bar');
+  if (!bar) return;
+  const entries = Object.entries(data);
+  if (!entries.length) {
+    bar.innerHTML = '<p class="hint" style="margin:0">No saved personalities yet.</p>';
+    return;
+  }
+  bar.innerHTML = entries.map(([name, pdata]) => {
+    const encoded = JSON.stringify(pdata).replace(/'/g, '&#39;');
+    const safeName = JSON.stringify(name).replace(/'/g, '&#39;');
+    return `<div class="theme-chip">
+      <button type="button" class="secondary" onclick='applyPersonality(${encoded})' title="Apply">${name.replace(/</g,'&lt;')}</button>
+      <button type="button" class="secondary theme-del" onclick='deletePersonality(${safeName})' title="Delete">×</button>
+    </div>`;
+  }).join('');
+}
+
+function applyPersonality(data) {
+  ['ai_provider', 'ai_routing', 'jina_routing'].forEach(k => {
+    const el = document.getElementById(k);
+    if (el && data[k] !== undefined) { el.value = data[k]; el.dispatchEvent(new Event('change')); }
+  });
+  ['ai_base_url', 'ai_model', 'ai_system_prompt', 'ai_avatar', 'ai_user_avatar'].forEach(k => {
+    const el = document.getElementById(k);
+    if (el && data[k] !== undefined) el.value = data[k];
+  });
+  if (data.ai_max_results !== undefined) {
+    const el = document.getElementById('ai_max_results');
+    if (el) { el.value = data.ai_max_results; document.getElementById('ai-max-label').textContent = data.ai_max_results; }
+  }
+  if (data.ai_use_jina !== undefined) {
+    const el = document.getElementById('ai_use_jina');
+    if (el) el.checked = !!data.ai_use_jina;
+  }
+}
+
+async function savePersonality() {
+  const nameEl = document.getElementById('personality-name-input');
+  const name = (nameEl.value || '').trim();
+  if (!name) { nameEl.focus(); return; }
+  const data = {};
+  ['ai_provider', 'ai_routing', 'jina_routing', 'ai_base_url', 'ai_model', 'ai_system_prompt', 'ai_avatar', 'ai_user_avatar'].forEach(k => {
+    const el = document.getElementById(k);
+    if (el) data[k] = el.value;
+  });
+  const maxEl = document.getElementById('ai_max_results');
+  if (maxEl) data.ai_max_results = parseInt(maxEl.value, 10) || 10;
+  const jinaEl = document.getElementById('ai_use_jina');
+  if (jinaEl) data.ai_use_jina = jinaEl.checked;
+  await fetch('/api/ai-personalities', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, data}),
+  });
+  nameEl.value = '';
+  document.getElementById('personality-save-btn').disabled = true;
+  await loadPersonalities();
+}
+
+async function deletePersonality(name) {
+  if (!confirm(`Delete personality "${name}"?`)) return;
+  await fetch('/api/ai-personalities/' + encodeURIComponent(name), {method: 'DELETE'});
+  await loadPersonalities();
+}
+
+document.getElementById('personality-name-input').addEventListener('input', e => {
+  document.getElementById('personality-save-btn').disabled = !e.target.value.trim();
+});
+
+loadPersonalities();
+
+// ── Port ─────────────────────────────────────────────────────
+
+const _savedPort = {{ server_port }};
+
+function portChanged(val) {
+  const n = parseInt(val, 10);
+  const warn = document.getElementById('port-warning');
+  if (!n || n === _savedPort) {
+    warn.style.display = 'none';
+    return;
+  }
+  warn.style.display = 'inline';
+  warn.innerHTML = `After saving, restart Scrambler and go to <a href="http://localhost:${n}/settings" style="color:var(--accent)">localhost:${n}</a>`;
+}
+
+// ── Desktop launcher ─────────────────────────────────────────
+
+let _launcherInstalled = false;
+
+async function loadLauncher() {
+  const btn = document.getElementById('launcher-btn');
+  const status = document.getElementById('launcher-status');
+  try {
+    const resp = await fetch('/api/launcher');
+    const data = await resp.json();
+    _launcherInstalled = data.installed;
+    btn.textContent = data.installed ? 'Reinstall' : 'Install';
+    status.textContent = data.installed ? 'Installed' : 'Not installed';
+    status.style.color = data.installed ? 'var(--url)' : 'var(--muted)';
+  } catch (e) {
+    btn.textContent = 'Error';
+    status.textContent = e.message;
+  }
+}
+
+async function toggleLauncher() {
+  const btn = document.getElementById('launcher-btn');
+  const status = document.getElementById('launcher-status');
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+  try {
+    const resp = await fetch('/api/launcher', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({install: !_launcherInstalled}),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    _launcherInstalled = data.installed;
+    btn.textContent = data.installed ? 'Reinstall' : 'Install';
+    status.textContent = data.installed ? 'Installed — find it in your app launcher' : 'Removed';
+    status.style.color = data.installed ? 'var(--url)' : 'var(--muted)';
+  } catch (e) {
+    status.textContent = 'Failed: ' + e.message;
+    status.style.color = 'var(--error)';
+    btn.textContent = _launcherInstalled ? 'Reinstall' : 'Install';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+loadLauncher();
+
+// ── Autostart ────────────────────────────────────────────────
+
+let _autostartEnabled = false;
+
+async function loadAutostart() {
+  const btn = document.getElementById('autostart-btn');
+  const status = document.getElementById('autostart-status');
+  try {
+    const resp = await fetch('/api/autostart');
+    const data = await resp.json();
+    if (!data.available) {
+      btn.disabled = true;
+      btn.textContent = 'Not available';
+      status.textContent = 'systemd not found on this system';
+      return;
+    }
+    _autostartEnabled = data.enabled;
+    btn.textContent = data.enabled ? 'Disable' : 'Enable';
+    status.textContent = data.enabled ? 'Currently enabled' : 'Currently disabled';
+    status.style.color = data.enabled ? 'var(--url)' : 'var(--muted)';
+  } catch (e) {
+    btn.textContent = 'Error';
+    status.textContent = e.message;
+  }
+}
+
+async function toggleAutostart() {
+  const btn = document.getElementById('autostart-btn');
+  const status = document.getElementById('autostart-status');
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+  try {
+    const resp = await fetch('/api/autostart', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({enable: !_autostartEnabled}),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    _autostartEnabled = data.enabled;
+    btn.textContent = data.enabled ? 'Disable' : 'Enable';
+    status.textContent = data.enabled ? 'Enabled — will start on next login' : 'Disabled';
+    status.style.color = data.enabled ? 'var(--url)' : 'var(--muted)';
+  } catch (e) {
+    status.textContent = 'Failed: ' + e.message;
+    status.style.color = 'var(--error)';
+    btn.textContent = _autostartEnabled ? 'Disable' : 'Enable';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+loadAutostart();
+
+// ── Auto-pick schedule ───────────────────────────────────────
+
+function updateApMinEngines(val) {
+  val = parseInt(val, 10);
+  document.getElementById('ap-min-eng-label').textContent = val;
+  const hint = document.getElementById('ap-min-eng-hint');
+  if (val === 0) hint.textContent = 'No minimum — all qualifying instances are considered.';
+  else hint.textContent = `Only pick instances with at least ${val} working engine${val === 1 ? '' : 's'}.`;
+}
+updateApMinEngines(document.getElementById('autopick_min_engines_input').value);
+
+function updateApScheduleUI() {
+  const v = document.getElementById('autopick_schedule').value;
+  document.getElementById('ap-interval-wrap').style.display = v === 'interval' ? 'flex' : 'none';
+}
+
+async function loadApStatus() {
+  try {
+    const d = await (await fetch('/api/autopick/status')).json();
+    const el = document.getElementById('ap-status-hint');
+    if (!el) return;
+    if (!d.last_run) { el.textContent = 'Never run.'; return; }
+    const ago = Math.round((Date.now()/1000 - d.last_run) / 60);
+    if (d.error) {
+      el.style.color = 'var(--error)';
+      el.textContent = `Last run ${ago}m ago — failed: ${d.error}`;
+    } else {
+      el.style.color = 'var(--url)';
+      el.textContent = `Last run ${ago}m ago — picked ${d.count} instances.`;
+    }
+  } catch (_) {}
+}
+
+loadApStatus();
+
+// ── Instances per search slider ──────────────────────────────
+
+const _MI_HINTS = [
+  '',
+  'Maximum privacy — one operator sees your query.',
+  'Balanced — Borda-ranked consensus across two operators.',
+  'Best results — three operators, strongest consensus.',
+];
+
+function updateMiLabel(val) {
+  val = parseInt(val, 10);
+  document.getElementById('mi-label').textContent = val;
+  const hint = document.getElementById('mi-hint');
+  hint.textContent = _MI_HINTS[val] || val + ' operators — results merged by Borda count.';
+}
+
+updateMiLabel(document.getElementById('multi_instance').value);
+
+function updateCwLabel(val) {
+  val = parseInt(val, 10);
+  document.getElementById('cw-label').textContent = val === 0 ? 'off' : val;
+}
+
+function syncCwMax(miVal) {
+  const cw = document.getElementById('circuit_warmup');
+  if (!cw) return;
+  const newMax = parseInt(miVal, 10);
+  cw.max = newMax;
+  if (parseInt(cw.value, 10) > newMax) {
+    cw.value = newMax;
+    updateCwLabel(newMax);
+  }
+}
+
+// ── Domain cap ───────────────────────────────────────────────
+function updateDomainCap(val) {
+  val = parseInt(val, 10);
+  const lbl = document.getElementById('dc-label');
+  const hint = document.getElementById('dc-hint');
+  if (val === 0) {
+    lbl.textContent = 'off';
+    hint.textContent = 'No limit — one domain can dominate the full results page.';
+  } else {
+    lbl.textContent = val + ' per domain';
+    hint.textContent = val === 1
+      ? 'Strict — only one result per domain before overflow goes to the end.'
+      : `At most ${val} results from any single domain appear before the rest. Excess moves to the end.`;
+  }
+}
+updateDomainCap(document.getElementById('domain_cap').value);
+
+// ── Priority source cap ──────────────────────────────────────
+function updatePscLabel(val) {
+  val = parseInt(val, 10);
+  document.getElementById('psc-label').textContent = val + ' result' + (val === 1 ? '' : 's');
+}
+updatePscLabel(document.getElementById('priority_source_cap').value);
+
+// ── Priority source relevance cutoff ────────────────────────
+const _PS_CUTOFF_HINTS = {
+  '0.00': 'Off — all matching sources are boosted regardless of relevance.',
+  '0.10': 'Very loose — only boosts sources with at least minimal term overlap.',
+  '0.20': 'Loose — skips clearly off-topic source results.',
+  '0.30': 'Moderate — requires reasonable keyword match to boost.',
+  '0.40': 'Strict — only boosts sources with strong term relevance.',
+  '0.50': 'Very strict — only boosts highly relevant source results.',
+};
+function updatePsCutoff(val) {
+  const v = parseFloat(val).toFixed(2);
+  document.getElementById('psc-cutoff-label').textContent = v;
+  const hint = document.getElementById('psc-cutoff-hint');
+  hint.textContent = _PS_CUTOFF_HINTS[v] || (parseFloat(v) > 0.5 ? 'Very strict — most source results will not be boosted.' : '');
+}
+updatePsCutoff(document.getElementById('priority_source_cutoff').value);
+
+// ── Semantic relevance cutoff ────────────────────────────────
+const _SEM_CUTOFF_HINTS = {
+  '0.00': 'Off — all results kept regardless of relevance.',
+  '0.10': 'Very loose — removes only clearly unrelated results.',
+  '0.20': 'Loose — removes most off-topic results.',
+  '0.30': 'Moderate — keeps results with clear topic overlap.',
+  '0.40': 'Strict — only noticeably relevant results.',
+  '0.50': 'Very strict — only closely related results.',
+};
+function updateSemCutoff(val) {
+  const v = parseFloat(val).toFixed(2);
+  document.getElementById('sem-cutoff-label').textContent = v;
+  const hint = document.getElementById('sem-cutoff-hint');
+  hint.textContent = _SEM_CUTOFF_HINTS[v] || (parseFloat(v) > 0.5 ? 'Very strict — most results will be filtered.' : '');
+}
+updateSemCutoff(document.getElementById('semantic_cutoff').value);
+
+// ── Search profiles ──────────────────────────────────────────
+let _profiles = {};
+
+async function profilesInit() {
+  try {
+    _profiles = await (await fetch('/api/search-profiles')).json();
+  } catch (_) { _profiles = {}; }
+  const sel = document.getElementById('profile-select');
+  const prev = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  Object.keys(_profiles).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (prev && _profiles[prev]) sel.value = prev;
+  profileSelectChanged();
+}
+
+function profileSelectChanged() {
+  const has = !!document.getElementById('profile-select').value;
+  document.getElementById('profile-load-btn').disabled   = !has;
+  document.getElementById('profile-delete-btn').disabled = !has;
+}
+
+async function profileLoad() {
+  const name = document.getElementById('profile-select').value;
+  if (!name) return;
+  const hint = document.getElementById('profile-hint');
+  hint.textContent = 'Loading…';
+  try {
+    const r = await fetch(`/api/search-profiles/${encodeURIComponent(name)}/load`, {method:'POST'});
+    if ((await r.json()).ok) { hint.textContent = `"${name}" loaded — reloading…`; location.href = location.pathname; }
+    else hint.textContent = 'Failed to load profile.';
+  } catch (_) { hint.textContent = 'Error loading profile.'; }
+}
+
+function profileSaveAndSubmit() {
+  const name = document.getElementById('profile-name-input').value.trim();
+  if (!name) return;
+  // Inject profile name into the main form and submit — settings + profile save happen together
+  document.getElementById('profile-save-name-hidden').value = name;
+  document.getElementById('settings-form').submit();
+}
+
+async function profileDelete() {
+  const name = document.getElementById('profile-select').value;
+  if (!name) return;
+  if (!confirm(`Delete profile "${name}"?`)) return;
+  const hint = document.getElementById('profile-hint');
+  try {
+    await fetch(`/api/search-profiles/${encodeURIComponent(name)}`, {method:'DELETE'});
+    hint.textContent = `"${name}" deleted.`;
+    await profilesInit();
+  } catch (_) { hint.textContent = 'Error deleting profile.'; }
+}
+
+document.getElementById('profile-select').addEventListener('change', profileSelectChanged);
+profilesInit();
+
+// ── Sentence-transformers installer ─────────────────────────
+
+async function semInstall() {
+  const btn    = document.getElementById('sem-install-btn');
+  const status = document.getElementById('sem-install-status');
+  const log    = document.getElementById('sem-install-log');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Installing…';
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Starting…';
+  log.style.display = 'block';
+
+  try { await fetch('/api/sem-install', {method: 'POST'}); } catch (_) {}
+
+  const poll = setInterval(async () => {
+    try {
+      const d = await (await fetch('/api/sem-install/status')).json();
+      log.textContent = d.log || '';
+      log.scrollTop = log.scrollHeight;
+      if (d.done) {
+        clearInterval(poll);
+        status.style.color = 'var(--url)';
+        status.textContent = '✓ Installed — restart Scrambler to enable semantic reranking.';
+        btn.textContent = 'Installed';
+      } else if (d.error) {
+        clearInterval(poll);
+        status.style.color = 'var(--error)';
+        status.textContent = 'Failed: ' + d.error;
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+      } else if (d.running) {
+        status.textContent = 'Installing…';
+      }
+    } catch (_) {}
+  }, 1200);
+}
+
+// ── Restart ──────────────────────────────────────────────────
+
+async function restartServer() {
+  const btn    = document.getElementById('restart-btn');
+  const status = document.getElementById('restart-status');
+  btn.disabled = true;
+  btn.textContent = 'Restarting…';
+  status.style.color = 'var(--muted)';
+  status.textContent = '';
+  try { await fetch('/api/restart', {method: 'POST'}); } catch (_) {}
+  status.textContent = 'Waiting for server to come back…';
+  const poll = setInterval(async () => {
+    try {
+      await fetch('/');
+      clearInterval(poll);
+      status.style.color = 'var(--url)';
+      status.textContent = 'Back up — reloading…';
+      setTimeout(() => { location.href = location.pathname; }, 600);
+    } catch (_) {}
+  }, 700);
+}
+
+// ── Collapsible appearance sections ─────────────────────────
+
+const _COLLAPSE_KEY = 'scrambler_collapse';
+
+function updateOfflineUI(val) {
+  document.getElementById('offline-behavior-row').style.display = val !== 'none' ? 'block' : 'none';
+  document.getElementById('pmtiles-url-row').style.display = (val === 'pmtiles' || val === 'both') ? 'block' : 'none';
+}
+
+function toggleCollapse(id) {
+  const body = document.getElementById('cb-' + id);
+  if (!body) return;
+  const hdr = body.previousElementSibling;
+  const now = body.classList.toggle('collapsed');
+  if (hdr) hdr.classList.toggle('collapsed', now);
+  const saved = JSON.parse(localStorage.getItem(_COLLAPSE_KEY) || '{}');
+  saved[id] = now;
+  localStorage.setItem(_COLLAPSE_KEY, JSON.stringify(saved));
+}
+
+(function initCollapse() {
+  const saved = JSON.parse(localStorage.getItem(_COLLAPSE_KEY) || '{}');
+  const defaultCollapsed = new Set(['identity','background','cursor','sound','font','colorways','loading','colors']);
+  document.querySelectorAll('.collapse-body').forEach(body => {
+    const id = body.id.replace('cb-', '');
+    const hdr = body.previousElementSibling;
+    const collapse = saved[id] === true || (defaultCollapsed.has(id) && saved[id] !== false);
+    if (collapse) {
+      body.classList.add('collapsed');
+      if (hdr) hdr.classList.add('collapsed');
+    }
+  });
+})();
+
+// Load instance stats immediately if the panel is already open (e.g. restored from localStorage)
+(function() {
+  var body = document.getElementById('cb-instance-stats');
+  if (body && !body.classList.contains('collapsed')) loadInstanceStats();
+})();
+
+// ── Category tab sorter ──────────────────────────────────────────────────────
+(function() {
+  const list = document.getElementById('cat-sort-list');
+  const hidden = document.getElementById('tab-categories-value');
+  if (!list || !hidden) return;
+
+  let dragging = null;
+
+  list.addEventListener('dragstart', e => {
+    dragging = e.target.closest('.cat-sort-item');
+    if (dragging) {
+      dragging.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  });
+
+  list.addEventListener('dragend', () => {
+    if (dragging) dragging.classList.remove('dragging');
+    list.querySelectorAll('.cat-sort-item').forEach(i => i.classList.remove('drag-over'));
+    dragging = null;
+    syncCatValue();
+    syncDefaultCatOptions();
+  });
+
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!dragging) return;
+    const over = e.target.closest('.cat-sort-item');
+    list.querySelectorAll('.cat-sort-item').forEach(i => i.classList.remove('drag-over'));
+    if (over && over !== dragging) {
+      over.classList.add('drag-over');
+      const mid = over.getBoundingClientRect().top + over.getBoundingClientRect().height / 2;
+      list.insertBefore(dragging, e.clientY < mid ? over : over.nextSibling);
+    }
+  });
+
+  list.addEventListener('dragleave', e => {
+    const over = e.target.closest('.cat-sort-item');
+    if (over) over.classList.remove('drag-over');
+  });
+
+  syncCatValue();
+
+  function syncCatValue() {
+    const vals = [];
+    list.querySelectorAll('.cat-sort-item').forEach(item => {
+      const cb = item.querySelector('input[type="checkbox"]');
+      if (cb && cb.checked) vals.push(item.dataset.val);
+    });
+    hidden.value = vals.join(',');
+  }
+
+  function syncDefaultCatOptions() {
+    const sel = document.getElementById('default_category');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '';
+    list.querySelectorAll('.cat-sort-item').forEach(item => {
+      const cb = item.querySelector('input[type="checkbox"]');
+      if (!cb || !cb.checked) return;
+      const label = item.querySelector('.cat-name');
+      const opt = document.createElement('option');
+      opt.value = item.dataset.val;
+      opt.textContent = label ? label.textContent.trim() : item.dataset.val;
+      if (opt.value === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!sel.value && sel.options.length) sel.options[0].selected = true;
+  }
+
+  window.onCatChange = function(cb) {
+    const item = cb.closest('.cat-sort-item');
+    if (item) item.classList.toggle('unchecked', !cb.checked);
+    syncCatValue();
+    syncDefaultCatOptions();
+  };
+})();
+
+function navTo(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var top = el.getBoundingClientRect().top + window.scrollY - Math.round(window.innerHeight * 0.25);
+  window.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+}
+
+function scramblerExport(what) {
+  const a = document.createElement('a');
+  a.href = '/api/export?what=' + encodeURIComponent(what);
+  a.download = 'scrambler-' + what + '-export.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportCurrentTheme() {
+  const name = prompt('Theme name:', 'My Theme');
+  if (!name) return;
+  const appearance = readCurrentAppearance();
+  const blob = JSON.stringify({
+    scrambler_export: '1.0',
+    type: 'themes',
+    exported_at: new Date().toISOString(),
+    themes: { [name]: appearance }
+  }, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([blob], {type: 'application/json'}));
+  a.download = 'scrambler-theme-' + name.replace(/[^a-z0-9]/gi, '-') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportCurrentProfile() {
+  const name = prompt('Profile name:', 'My Profile');
+  if (!name) return;
+  const a = document.createElement('a');
+  a.href = '/api/export?what=profile&name=' + encodeURIComponent(name);
+  a.download = 'scrambler-profile-' + name.replace(/[^a-z0-9]/gi, '-') + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function scramblerImport() {
+  const fileEl = document.getElementById('import-file');
+  const statusEl = document.getElementById('import-status');
+  if (!fileEl.files.length) { statusEl.textContent = 'Choose a file first.'; return; }
+  const text = await fileEl.files[0].text();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { statusEl.textContent = 'Invalid JSON.'; return; }
+  statusEl.textContent = 'Importing…';
+  try {
+    const resp = await fetch('/api/import', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: text,
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      statusEl.textContent = 'Imported: ' + data.applied.join(', ') + '. Reloading…';
+      setTimeout(() => { location.href = location.pathname; }, 900);
+    } else {
+      statusEl.textContent = 'Error: ' + (data.error || 'Unknown');
+    }
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+async function loadInstanceStats() {
+  var el = document.getElementById('instance-stats-container');
+  if (!el) return;
+  try {
+    var res = await fetch('/api/instance-stats');
+    var stats = await res.json();
+    if (!stats.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">No instances configured or none queried yet.</p>'; return; }
+    var rows = stats.map(function(s) {
+      var health = s.healthy ? '<span style="color:var(--url)">✓ healthy</span>' : '<span style="color:var(--error)">✗ down</span>';
+      return '<tr>' +
+        '<td style="word-break:break-all;max-width:320px;padding:5px 8px 5px 0">' + s.url + '</td>' +
+        '<td style="text-align:center;padding:5px 8px">' + health + '</td>' +
+        '<td style="text-align:right;padding:5px 8px">' + s.hits + '</td>' +
+        '<td style="text-align:right;padding:5px 8px">' + s.failures + '</td>' +
+        '<td style="text-align:right;padding:5px 8px">' + (s.avg_ms || '—') + ' ms</td>' +
+        '</tr>';
+    }).join('');
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+      '<thead><tr style="color:var(--muted);font-size:11px;border-bottom:1px solid var(--border)">' +
+      '<th style="text-align:left;padding:4px 8px 4px 0">Instance</th>' +
+      '<th style="text-align:center;padding:4px 8px">Status</th>' +
+      '<th style="text-align:right;padding:4px 8px">Hits</th>' +
+      '<th style="text-align:right;padding:4px 8px">Failures</th>' +
+      '<th style="text-align:right;padding:4px 8px">Avg latency</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<button type="button" onclick="loadInstanceStats()" style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-size:12px;padding:3px 10px">Refresh</button>';
+  } catch (e) {
+    el.innerHTML = '<p style="color:var(--error);font-size:13px">Failed to load stats.</p>';
+  }
+}
+</script>
+{% endblock %}

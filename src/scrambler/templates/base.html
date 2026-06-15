@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ appearance.title }}{% endblock %}</title>
+  <link rel="icon" href="{{ appearance.favicon_href }}">
+  {% if appearance.font_face_css %}
+  <style>{{ appearance.font_face_css | safe }}</style>
+  {% elif appearance.font_import_url %}
+  <link rel="stylesheet" href="{{ appearance.font_import_url }}">
+  {% endif %}
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(/static/fonts/inter-400-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(/static/fonts/inter-500-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url(/static/fonts/inter-600-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url(/static/fonts/inter-700-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'VT323';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(/static/fonts/vt323-400-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'Righteous';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(/static/fonts/righteous-400-latin.woff2) format('woff2');
+    }
+
+    :root {
+      {% for var, val in appearance.colors.items() %}{{ var }}: {{ val }};
+      {% endfor %}
+      --font: {{ appearance.font_family + ", " if appearance.font_family else "" }}-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:visited { color: var(--visited); }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    nav .brand {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--title);
+      letter-spacing: -0.3px;
+    }
+    nav .brand:visited { color: var(--title); }
+    nav .brand:hover { text-decoration: none; opacity: 0.85; }
+
+    nav a.nav-link { color: var(--muted); }
+    nav a.nav-link:hover { color: var(--text); text-decoration: none; }
+
+    .search-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-bar input[type="search"],
+    .search-bar input[type="text"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 15px;
+      padding: 7px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-bar input:focus { border-color: var(--accent-dim); }
+
+    .search-bar button {
+      background: var(--accent-dim);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 7px 14px;
+      transition: background 0.15s;
+    }
+    .search-bar button:hover { background: var(--accent); }
+
+    .search-input-group { display: flex; }
+    .search-input-group input[type="search"],
+    .search-input-group input[type="text"] {
+      border-radius: 0 6px 6px 0 !important;
+    }
+    .search-profile-cap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-right: none;
+      border-radius: 6px 0 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 7px 6px 7px 10px;
+      cursor: pointer;
+      outline: none;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+      max-width: 130px;
+    }
+    .search-profile-cap:focus { border-color: var(--accent-dim); }
+    .search-profile-cap.has-active { color: var(--accent); }
+
+    main { padding: 24px 20px; max-width: 780px; }
+
+    .error-msg {
+      color: var(--error);
+      background: color-mix(in srgb, var(--error) 10%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--error) 30%, var(--border));
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+
+    .error-msg code {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 13px;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 16px 20px;
+      margin-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+  {% block extra_style %}{% endblock %}
+</head>
+<body>
+<nav>
+  <a href="/" class="brand">{{ appearance.title }}</a>
+  {% block nav_extra %}{% endblock %}
+  <a href="/history" class="nav-link">History</a>
+  <a href="/saved" class="nav-link">Saved</a>
+  <a href="/settings" class="nav-link">Settings</a>
+</nav>
+{% if appearance.background_image %}
+{% set _bg = appearance.background_image %}
+{% set _bg_low = _bg | lower %}
+{% set _bg_video = '.mp4' in _bg_low or '.webm' in _bg_low or '.mov' in _bg_low or '.ogg' in _bg_low %}
+{% if _bg_video %}
+<video autoplay muted {% if appearance.get('background_video_loop', True) %}loop{% endif %} playsinline style="position:fixed;inset:0;z-index:-1;pointer-events:none;width:100%;height:100%;object-fit:{{ 'contain' if appearance.background_size == 'contain' else 'cover' }};opacity:{{ appearance.background_opacity }}">
+  <source src="{{ _bg }}">
+</video>
+{% else %}
+<div style="
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:url('{{ _bg }}');
+  background-size:{{ 'auto' if appearance.background_size == 'tile' else appearance.background_size }};
+  background-position:center;
+  background-repeat:{{ 'repeat' if appearance.background_size == 'tile' else 'no-repeat' }};
+  background-attachment:fixed;
+  opacity:{{ appearance.background_opacity }};
+"></div>
+{% endif %}
+{% endif %}
+{% block content %}{% endblock %}
+<footer>{{ appearance.subtitle }}</footer>
+
+{% set cursor_url       = appearance.cursor_url       | default('') %}
+{% set cursor_trail     = appearance.cursor_trail     | default('off') %}
+{% set cursor_trail_url = appearance.cursor_trail_url | default('') %}
+{% if cursor_url %}
+<style>
+  *, *::before, *::after { cursor: url('{{ cursor_url }}') 0 0, auto !important; }
+</style>
+{% endif %}
+{% if cursor_trail != 'off' or cursor_trail_url %}
+<style>
+  .cur-particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99999;
+    transform: translate(-50%, -50%);
+    animation: cur-fade 0.7s ease-out forwards;
+  }
+  @keyframes cur-fade {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1)   translateY(0); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) translateY(-18px); }
+  }
+</style>
+<script>
+(function () {
+  const TRAIL     = {{ cursor_trail | tojson }};
+  const TRAIL_URL = {{ cursor_trail_url | tojson }};
+  let last = 0;
+
+  function spawn(x, y) {
+    let el;
+    if (TRAIL_URL) {
+      el = document.createElement('img');
+      el.src = TRAIL_URL;
+      el.style.width = '24px';
+      el.style.height = 'auto';
+    } else {
+      el = document.createElement('span');
+      if (TRAIL === 'sparkles') {
+        el.textContent = ['✦','✧','·','✶','✸'][Math.random() * 5 | 0];
+        const hue = Math.random() * 360;
+        el.style.cssText += `;color:hsl(${hue},90%,70%);font-size:${10 + Math.random()*10}px`;
+      } else if (TRAIL === 'stars') {
+        el.textContent = ['★','☆','✩','✪'][Math.random() * 4 | 0];
+        el.style.cssText += `;color:var(--accent);font-size:${12 + Math.random()*8}px`;
+      } else if (TRAIL === 'dots') {
+        const size = 4 + Math.random() * 5;
+        el.style.cssText += `;width:${size}px;height:${size}px;background:var(--accent);border-radius:50%`;
+      } else if (TRAIL === 'bubbles') {
+        const size = 6 + Math.random() * 10;
+        el.style.cssText += `;width:${size}px;height:${size}px;border:1.5px solid var(--accent);border-radius:50%;animation-duration:1s`;
+      }
+    }
+    el.className = 'cur-particle';
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  document.addEventListener('mousemove', function (e) {
+    const now = Date.now();
+    if (now - last < 30) return;
+    last = now;
+    spawn(e.clientX, e.clientY);
+  });
+}());
+</script>
+{% endif %}
+
+{% set typing_sound = appearance.typing_sound | default('off') %}
+{% set typing_sound_url = appearance.typing_sound_url | default('') %}
+{% set search_sound = appearance.search_sound | default('off') %}
+{% set search_sound_url = appearance.search_sound_url | default('') %}
+{% set click_sound = appearance.click_sound | default('off') %}
+{% set click_sound_url = appearance.click_sound_url | default('') %}
+{% set sound_volume = appearance.sound_volume | default(0.5) %}
+{% if typing_sound != 'off' or search_sound != 'off' or click_sound != 'off' or typing_sound_url or search_sound_url or click_sound_url %}
+<script>
+(function () {
+  let _ctx = null;
+  const VOL = {{ sound_volume }};
+
+  function ctx() {
+    if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_ctx.state === 'suspended') _ctx.resume();
+    return _ctx;
+  }
+
+  function noise(duration, freq, q, vol) {
+    const c = ctx();
+    const buf = c.createBuffer(1, c.sampleRate * duration, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++)
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filt = c.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = freq;
+    filt.Q.value = q;
+    const g = c.createGain();
+    g.gain.value = vol * VOL;
+    src.connect(filt); filt.connect(g); g.connect(c.destination);
+    src.start();
+  }
+
+  function tone(type, freq, freqEnd, duration, vol) {
+    const c = ctx();
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, c.currentTime);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + duration);
+    g.gain.setValueAtTime(vol * VOL, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + duration);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(); osc.stop(c.currentTime + duration);
+  }
+
+  const TYPING = {
+    click:      () => noise(0.04, 3500, 0.8, 0.35),
+    typewriter: () => noise(0.07, 1800, 0.5, 0.45),
+    soft:       () => tone('sine', 600, 300, 0.06, 0.18),
+  };
+
+  const SEARCH = {
+    whoosh: () => {
+      tone('sine', 220, 880, 0.18, 0.25);
+      setTimeout(() => tone('sine', 880, 220, 0.12, 0.1), 180);
+    },
+    ding:   () => tone('sine', 880, null, 0.55, 0.28),
+    retro:  () => {
+      const c = ctx();
+      [440, 660, 880].forEach((f, i) => {
+        setTimeout(() => tone('square', f, null, 0.1, 0.12), i * 80);
+      });
+    },
+  };
+
+  const CLICK = {
+    tick:  () => noise(0.025, 4500, 1.2, 0.25),
+    pop:   () => tone('sine', 180, 80, 0.06, 0.22),
+    retro: () => tone('square', 660, null, 0.05, 0.15),
+  };
+
+  // Preload custom audio files for low-latency playback
+  function makeCustomPlayer(url, vol) {
+    if (!url) return null;
+    const a = new Audio(url);
+    a.preload = 'auto';
+    return () => { a.currentTime = 0; a.volume = vol * VOL; a.play().catch(() => {}); };
+  }
+
+  const customTyping = makeCustomPlayer({{ typing_sound_url | tojson }}, 1);
+  const customSearch = makeCustomPlayer({{ search_sound_url | tojson }}, 1);
+  const customClick  = makeCustomPlayer({{ click_sound_url | tojson }}, 1);
+
+  const synthTyping = TYPING[{{ typing_sound | tojson }}];
+  const synthSearch = SEARCH[{{ search_sound | tojson }}];
+  const synthClick  = CLICK[{{ click_sound | tojson }}];
+
+  const typingFn = customTyping || synthTyping;
+  const searchFn = customSearch || synthSearch;
+  const clickFn  = customClick  || synthClick;
+
+  {% if typing_sound != 'off' or typing_sound_url %}
+  let lastKey = 0;
+  document.addEventListener('keydown', function (e) {
+    if (!e.target.matches('input[type="search"], input[name="q"]')) return;
+    const now = Date.now();
+    if (now - lastKey < 40) return;
+    lastKey = now;
+    if (typingFn) typingFn();
+  });
+  {% endif %}
+
+  {% if search_sound != 'off' or search_sound_url %}
+  document.addEventListener('submit', function (e) {
+    const form = e.target.closest('form');
+    if (form && (form.action.includes('/search') || form.querySelector('[name="q"]'))) {
+      if (searchFn) searchFn();
+    }
+  });
+  {% endif %}
+
+  {% if click_sound != 'off' or click_sound_url %}
+  document.addEventListener('click', function (e) {
+    const t = e.target.closest('button, a, [role="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], label[for], select');
+    if (t && clickFn) clickFn();
+  });
+  {% endif %}
+}());
+</script>
+{% endif %}
+
+{% if appearance.background_audio_url %}
+<audio id="bg-audio" {% if appearance.background_audio_loop != false %}loop{% endif %} preload="auto" src="{{ appearance.background_audio_url }}"></audio>
+<div id="audio-bar">
+  <button id="audio-btn" onclick="audioToggle()" title="Play/pause">▶</button>
+  <span id="audio-icon">♪</span>
+  <input type="range" id="audio-vol" min="0" max="1" step="0.05"
+         value="{{ appearance.background_audio_volume | default(0.5) }}"
+         title="Volume" oninput="audioVol(this.value)">
+</div>
+<style>
+  #audio-bar {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 8000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px 6px 8px;
+    font-size: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  #audio-bar:hover { opacity: 1; }
+  #audio-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  #audio-icon { color: var(--muted); }
+  #audio-vol {
+    width: 72px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+</style>
+<script>
+(function () {
+  const audio = document.getElementById('bg-audio');
+  const btn   = document.getElementById('audio-btn');
+  const vol   = document.getElementById('audio-vol');
+  const KEY   = 'scrambler_audio';
+
+  audio.volume = parseFloat(vol.value);
+
+  // Restore state from sessionStorage
+  const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+  if (saved && saved.playing) {
+    audio.currentTime = saved.position || 0;
+    audio.play().then(() => { btn.textContent = '⏸'; }).catch(() => {});
+  }
+
+  audio.addEventListener('play',  () => { btn.textContent = '⏸'; });
+  audio.addEventListener('pause', () => { btn.textContent = '▶'; });
+
+  window.audioToggle = function () {
+    if (audio.paused) { audio.play(); } else { audio.pause(); }
+  };
+  window.audioVol = function (v) {
+    audio.volume = parseFloat(v);
+  };
+
+  // Save state before page unload so next page can resume
+  window.addEventListener('beforeunload', () => {
+    sessionStorage.setItem(KEY, JSON.stringify({
+      playing: !audio.paused,
+      position: audio.currentTime,
+    }));
+  });
+}());
+</script>
+{% endif %}
+
+<div id="search-loading" aria-hidden="true">
+  <div class="sl-inner">
+    <div class="sl-title">{{ appearance.title }}</div>
+    <div class="sl-quip" id="sl-quip"> </div>
+    <div class="sl-track"><div class="sl-fill" id="sl-fill"></div></div>
+  </div>
+</div>
+
+<style>
+  #search-loading {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg);
+    align-items: center;
+    justify-content: center;
+  }
+  #search-loading.active { display: flex; }
+  .sl-inner { text-align: center; width: 360px; padding: 0 20px; }
+  .sl-title { font-size: 36px; font-weight: 700; color: var(--accent); margin-bottom: 32px; letter-spacing: -0.5px; }
+  .sl-quip { font-size: 14px; color: var(--muted); min-height: 22px; margin-bottom: 24px; transition: opacity 0.35s; }
+  .sl-quip.hidden { opacity: 0; }
+  .sl-track { height: 4px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .sl-fill { height: 100%; background: var(--accent); border-radius: 4px; width: 0%; transition: width 0.5s ease-out; }
+</style>
+
+<script>
+(function () {
+  const QUIPS = {{ (appearance.loading_quips or []) | tojson }};
+  const BAR_STYLE = {{ appearance.loading_bar_style | default('crawl') | tojson }};
+  const STREAMING_MODE = ({{ appearance.get('streaming_results','off') | tojson }} === 'off'
+                       && {{ appearance.get('loading_indicator','bar') | tojson }} === 'bar') ? 'off' : 'live';
+  const TIMEOUT_MS = {{ request_timeout * 1000 }};
+  const DEFAULT_QUIPS = [
+    "Routing through Tor...",
+    "Scrambling your query...",
+    "Picking an instance...",
+    "Fetching results...",
+    "Merging and ranking...",
+    "Almost there...",
+  ];
+  const quips = QUIPS.length ? QUIPS : DEFAULT_QUIPS;
+
+  const overlay = document.getElementById('search-loading');
+  const quipEl  = document.getElementById('sl-quip');
+  const fillEl  = document.getElementById('sl-fill');
+
+  let qi = 0, pct = 0, quipTimer, fillTimer;
+
+  function startOverlay() {
+    overlay.classList.add('active');
+    pct = 0; qi = 0;
+    fillEl.style.transition = 'width 0.5s ease-out';
+    fillEl.style.width = '0%';
+    showQuip();
+    quipTimer = setInterval(showQuip, 2600);
+
+    if (BAR_STYLE === 'none') {
+      fillEl.style.display = 'none';
+    } else if (BAR_STYLE === 'timed') {
+      // Linear: reach 85% by TIMEOUT_MS, tick every 200ms
+      const tickMs = 200;
+      const stepPct = 85 / (TIMEOUT_MS / tickMs);
+      fillTimer = setInterval(() => {
+        pct = Math.min(pct + stepPct, 85);
+        fillEl.style.width = pct + '%';
+      }, tickMs);
+    } else {
+      // Crawl: asymptotic approach to 90%
+      fillTimer = setInterval(() => {
+        pct = pct + (90 - pct) * 0.07;
+        fillEl.style.width = pct + '%';
+      }, 400);
+    }
+  }
+
+  function showQuip() {
+    quipEl.classList.add('hidden');
+    setTimeout(() => {
+      quipEl.textContent = quips[qi % quips.length];
+      qi++;
+      quipEl.classList.remove('hidden');
+    }, 350);
+  }
+
+  document.addEventListener('submit', function (e) {
+    const form = e.target.closest('form');
+    if (STREAMING_MODE === 'off' && form && (form.action.includes('/search') || form.querySelector('[name="q"]'))) {
+      startOverlay();
+    }
+  });
+
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      overlay.classList.remove('active');
+      fillEl.style.display = '';
+      clearInterval(quipTimer);
+      clearInterval(fillTimer);
+    }
+  });
+}());
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,60 @@
+{% set _routing = prefs.use_tor if prefs.use_tor in ('tor', 'tor_fallback', 'direct') else ('tor' if prefs.use_tor else 'direct') %}
+{% set _rm = prefs.get('reader_mode', 'both') if _routing != 'direct' else 'off' %}
+{% set _jina_reader = prefs.get('jina_reader', False) %}
+{% set _wayback = prefs.get('wayback_links', True) %}
+{% set _tp = prefs.get('thumbnail_proxy', 'direct') %}
+{% set _is_video = active_cat == 'videos' %}
+{% for r in results %}
+{% if r.img_src or (r.thumbnail and active_cat == 'images') %}
+<div class="image-card" data-url="{{ r.url | e }}" data-engines="{{ r.engines | join(',') | lower }}" data-text="{{ (r.title + ' ' + r.url) | lower }}">
+  {% if r.priority_source %}<span class="priority-badge" title="Boosted: priority source">{{ r.priority_source }}</span>{% endif %}
+  <a href="{{ r.url }}" rel="noreferrer noopener" title="{{ r.title | e }}">
+    {% if r.thumbnail %}
+    <img src="{% if _tp == 'direct' %}{{ r.thumbnail }}{% else %}/img?url={{ r.thumbnail | urlencode }}{% endif %}" alt="{{ r.title | e }}" loading="lazy">
+    {% else %}<div class="image-card-placeholder"></div>{% endif %}
+  </a>
+  <div class="image-card-info">
+    <a href="{{ r.url }}" rel="noreferrer noopener">{{ r.title | truncate(55) }}</a>
+  </div>
+</div>
+{% else %}
+<div class="result-item{% if _is_video %} video-result{% endif %}" data-url="{{ r.url | e }}" data-engines="{{ r.engines | join(',') | lower }}" data-text="{{ (r.title + ' ' + (r.snippet | striptags) + ' ' + r.url) | lower }}">
+  {% if _is_video %}
+  <div class="video-thumb-wrap">
+    {% if r.thumbnail %}
+    <a href="{{ r.url }}" rel="noreferrer noopener">
+      <img src="{% if _tp == 'direct' %}{{ r.thumbnail }}{% else %}/img?url={{ r.thumbnail | urlencode }}{% endif %}" alt="{{ r.title | e }}" loading="lazy">
+      {% if r.duration %}<span class="video-duration">{{ r.duration }}</span>{% endif %}
+    </a>
+    {% else %}
+    <a href="{{ r.url }}" rel="noreferrer noopener" class="video-thumb-blank">
+      {% if r.duration %}<span class="video-duration-plain">{{ r.duration }}</span>{% endif %}
+    </a>
+    {% endif %}
+  </div>
+  <div class="video-info">
+  {% endif %}
+  <div class="result-title">
+    {% if _rm == 'reader' %}
+    <a href="/goto?url={{ r.url | urlencode }}">{{ r.title }}</a>
+    {% else %}
+    <a href="{{ r.url }}" rel="noreferrer noopener">{{ r.title }}</a>
+    {% endif %}
+    {% if r.priority_source %}<span class="priority-badge" title="Boosted: priority source">{{ r.priority_source }}</span>{% endif %}
+  </div>
+  <div class="result-url">
+    <span class="result-url-text">{{ r.url }}</span>
+    {% if _rm == 'both' %}<a href="/goto?url={{ r.url | urlencode }}" class="read-link">tor</a>{% endif %}
+    {% if _rm == 'reader' %}<a href="{{ r.url }}" rel="noreferrer noopener" class="read-link">direct ↗</a>{% endif %}
+    {% if _jina_reader %}<a href="/goto?url={{ r.url | urlencode }}&via=jina" class="read-link">jina</a>{% endif %}
+    {% if _wayback %}<button type="button" class="read-link wayback-btn" data-url="{{ r.url | e }}">archive</button>{% endif %}
+    <button type="button" class="save-result-btn read-link" data-url="{{ r.url | e }}" data-title="{{ r.title | e }}" data-snippet="{{ (r.snippet | striptags)[:200] | e }}">☆</button>
+  </div>
+  {% if r.snippet %}<div class="result-snippet">{{ r.snippet | safe }}</div>{% endif %}
+  {% if r.engines %}
+  <div class="result-engines">{% for e in r.engines %}<span class="engine-badge">{{ e }}</span>{% endfor %}</div>
+  {% endif %}
+  {% if _is_video %}</div>{% endif %}
+</div>
+{% endif %}
+{% endfor %}

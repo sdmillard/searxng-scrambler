@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Saved Results — {{ appearance.title }}{% endblock %}
+{% block extra_style %}
+<style>
+  .page-hdr {
+    display: flex; align-items: center; gap: 16px;
+    padding: 20px 20px 12px; border-bottom: 1px solid var(--border);
+  }
+  .page-hdr h1 { font-size: 18px; font-weight: 600; flex: 1; }
+  .saved-list { max-width: 780px; padding: 0 20px; }
+  .saved-item {
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .saved-item:last-child { border-bottom: none; }
+  .saved-body { flex: 1; min-width: 0; }
+  .saved-title a { font-size: 15px; color: var(--accent); }
+  .saved-title a:hover { text-decoration: underline; }
+  .saved-url { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0; }
+  .saved-snippet { font-size: 13px; color: var(--text); margin-top: 4px; line-height: 1.5; }
+  .saved-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .del-btn { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 7px; flex-shrink: 0; margin-top: 2px; }
+  .del-btn:hover { border-color: var(--error); color: var(--error); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 14px; }
+  .clear-btn:hover { border-color: var(--error); color: var(--error); }
+  .export-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 14px; }
+  .export-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  #saved-filter { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 13px; padding: 5px 10px; outline: none; width: 200px; }
+  #saved-filter:focus { border-color: var(--accent-dim); }
+  .no-saved { color: var(--muted); padding: 40px 0; font-size: 15px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1>Saved Results</h1>
+  <input type="search" id="saved-filter" placeholder="Filter…" autocomplete="off">
+  <button class="export-btn" id="export-saved-btn">Export JSON</button>
+  <button class="clear-btn" id="clear-saved-btn">Clear all</button>
+</div>
+<div class="saved-list" id="saved-list">
+  {% if results %}
+  {% for r in results %}
+  <div class="saved-item" data-url="{{ r.url | e }}" data-text="{{ (r.title + ' ' + r.url + ' ' + r.get('snippet','')) | lower }}">
+    <div class="saved-body">
+      <div class="saved-title"><a href="{{ r.url }}" rel="noreferrer noopener">{{ r.title }}</a></div>
+      <div class="saved-url">{{ r.url }}</div>
+      {% if r.get('snippet') %}<div class="saved-snippet">{{ r.snippet }}</div>{% endif %}
+      <div class="saved-meta">Saved {{ r.saved_at | int | datetimeformat }}</div>
+    </div>
+    <button class="del-btn" data-url="{{ r.url | e }}">✕</button>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="no-saved" id="no-saved-msg">No saved results yet. Use the ☆ button on any search result to save it.</div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(function() {
+  document.getElementById('saved-filter').addEventListener('input', function() {
+    var q = this.value.trim().toLowerCase();
+    document.querySelectorAll('.saved-item').forEach(function(el) {
+      el.style.display = !q || el.dataset.text.includes(q) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.del-btn').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      var url = this.dataset.url;
+      var row = this.closest('.saved-item');
+      row.style.opacity = '0.4';
+      await fetch('/api/saved-results?' + new URLSearchParams({url: url}), {method: 'DELETE'});
+      row.remove();
+      if (!document.querySelector('.saved-item')) {
+        document.getElementById('saved-list').innerHTML = '<div class="no-saved">No saved results yet.</div>';
+      }
+    });
+  });
+
+  var clearBtn = document.getElementById('clear-saved-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async function() {
+      if (!confirm('Clear all saved results?')) return;
+      var items = document.querySelectorAll('.saved-item');
+      for (var i = 0; i < items.length; i++) {
+        var u = items[i].dataset.url;
+        await fetch('/api/saved-results?' + new URLSearchParams({url: u}), {method: 'DELETE'});
+      }
+      document.getElementById('saved-list').innerHTML = '<div class="no-saved">No saved results yet.</div>';
+    });
+  }
+
+  var exportBtn = document.getElementById('export-saved-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+      var items = Array.from(document.querySelectorAll('.saved-item')).map(function(el) {
+        return {
+          url: el.dataset.url,
+          title: el.querySelector('.saved-title a') ? el.querySelector('.saved-title a').textContent : '',
+          snippet: el.querySelector('.saved-snippet') ? el.querySelector('.saved-snippet').textContent : '',
+          saved_at: el.querySelector('.saved-meta') ? el.querySelector('.saved-meta').textContent.replace('Saved ', '') : ''
+        };
+      });
+      var blob = new Blob([JSON.stringify(items, null, 2)], {type: 'application/json'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'saved_results.json';
+      a.click();
+    });
+  }
+})();
+</script>
+{% endblock %}

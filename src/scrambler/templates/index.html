@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ appearance.title }}{% endblock %}
+
+{% block extra_style %}
+<style>
+  .home {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 120px);
+    gap: 24px;
+    text-align: center;
+  }
+
+  .home h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--title);
+  }
+
+  .home .tagline {
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 420px;
+  }
+
+  .home .search-bar input[type="search"] {
+    width: 360px;
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+
+  .home .search-bar button {
+    font-size: 15px;
+    padding: 10px 20px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home">
+  <h1>{{ appearance.title }}</h1>
+  <p class="tagline">{{ appearance.tagline | replace('\n', '<br>') | safe }}</p>
+  <form action="/search" method="get" class="search-bar">
+    <div class="search-input-group">
+      <select class="search-profile-cap" id="profile-cap" onchange="quickSwitchProfile(this.value)">
+        <option value="">Profile</option>
+      </select>
+      <input type="search" name="q" placeholder="Search..." autofocus autocomplete="off" spellcheck="false">
+    </div>
+    <button type="submit">Search</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const _activeProfile = {{ prefs.active_profile | default('') | tojson }};
+const _settingsCustomized = {{ prefs.settings_customized | default(false) | tojson }};
+
+async function initProfileCap() {
+  const cap = document.getElementById('profile-cap');
+  if (!cap) return;
+  try {
+    const profiles = await (await fetch('/api/search-profiles')).json();
+    Object.keys(profiles).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = name;
+      if (name === _activeProfile) opt.selected = true;
+      cap.appendChild(opt);
+    });
+    if (_activeProfile) cap.classList.add('has-active');
+  } catch (_) {}
+}
+
+async function quickSwitchProfile(name) {
+  if (!name) return;
+  if (_settingsCustomized && !confirm(`Load "${name}"? Your custom settings will be replaced.`)) {
+    document.getElementById('profile-cap').value = '';
+    return;
+  }
+  const cap = document.getElementById('profile-cap');
+  if (cap) cap.disabled = true;
+  try { await fetch(`/api/search-profiles/${encodeURIComponent(name)}/load`, {method:'POST'}); } catch (_) {}
+  location.reload();
+}
+
+initProfileCap();
+</script>
+{% endblock %}

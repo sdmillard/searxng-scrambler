@@ -1,0 +1,9 @@
+# SearXNG instances I have chosen to trust.
+# One URL per line. Lines starting with # are ignored.
+# Add instances from: scrambler discover
+#
+# Each entry here is a statement of trust — the operator will see
+# your queries (as a Tor exit IP, not your real IP).
+#
+# https://priv.au
+# https://search.example.org

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "searxng-scrambler"
+version = "0.1.0"
+description = "Route searches across SearXNG instances through Tor — no single party holds your identity and your query"
+requires-python = ">=3.10"
+license = {text = "AGPL-3.0-or-later"}
+dependencies = [
+    "flask>=3.0",
+    "requests[socks]>=2.31",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "dnspython>=2.4",
+    "markdown>=3.4",
+]
+
+[project.optional-dependencies]
+ai = [
+    "sentence-transformers>=3.0",
+]
+
+[project.scripts]
+scrambler = "scrambler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+scrambler = [
+    "templates/**/*",
+    "static/**/*",
+    "static/backgrounds/*",
+    "static/fonts/*",
+]

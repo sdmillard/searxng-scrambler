@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}History — {{ appearance.title }}{% endblock %}
+{% block extra_style %}
+<style>
+  .page-hdr {
+    display: flex; align-items: center; gap: 16px;
+    padding: 20px 20px 12px; border-bottom: 1px solid var(--border);
+  }
+  .page-hdr h1 { font-size: 18px; font-weight: 600; flex: 1; }
+  .history-list { max-width: 780px; padding: 0 20px; }
+  .history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-query { flex: 1; }
+  .history-query a { font-size: 15px; color: var(--accent); }
+  .history-query a:hover { text-decoration: underline; }
+  .history-meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .history-cat { font-size: 11px; color: var(--muted); background: var(--engine); border-radius: 3px; padding: 1px 6px; }
+  .del-btn { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 7px; flex-shrink: 0; }
+  .del-btn:hover { border-color: var(--error); color: var(--error); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 14px; }
+  .clear-btn:hover { border-color: var(--error); color: var(--error); }
+  #hist-filter { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 13px; padding: 5px 10px; outline: none; width: 200px; }
+  #hist-filter:focus { border-color: var(--accent-dim); }
+  .no-history { color: var(--muted); padding: 40px 0; font-size: 15px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-hdr">
+  <h1>Search History</h1>
+  <input type="search" id="hist-filter" placeholder="Filter…" autocomplete="off">
+  <button class="clear-btn" id="clear-all-btn">Clear all</button>
+</div>
+<div class="history-list" id="history-list">
+  {% if entries %}
+  {% for e in entries %}
+  <div class="history-item" data-idx="{{ loop.index0 }}" data-text="{{ e.query | lower }}">
+    <div class="history-query">
+      <a href="/search?q={{ e.query | urlencode }}&cat={{ e.cat | urlencode }}">{{ e.query }}</a>
+    </div>
+    <span class="history-cat">{{ e.cat }}</span>
+    <span class="history-meta">{{ e.ts | int | datetimeformat }}</span>
+    <button class="del-btn" data-idx="{{ loop.index0 }}">✕</button>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="no-history">No search history yet.</div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(function() {
+  // Total entry count from server (reversed, so idx 0 = most recent = last in file)
+  var TOTAL = {{ entries | length }};
+
+  document.getElementById('hist-filter').addEventListener('input', function() {
+    var q = this.value.trim().toLowerCase();
+    document.querySelectorAll('.history-item').forEach(function(el) {
+      el.style.display = !q || el.dataset.text.includes(q) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.del-btn').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      var displayIdx = parseInt(this.dataset.idx);
+      var fileIdx = TOTAL - 1 - displayIdx; // reversed display → file index
+      var row = this.closest('.history-item');
+      row.style.opacity = '0.4';
+      await fetch('/api/history/' + fileIdx, {method: 'DELETE'});
+      row.remove();
+      TOTAL--;
+    });
+  });
+
+  var clearBtn = document.getElementById('clear-all-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async function() {
+      if (!confirm('Clear all search history?')) return;
+      await fetch('/api/history', {method: 'DELETE'});
+      document.getElementById('history-list').innerHTML = '<div class="no-history">No search history yet.</div>';
+    });
+  }
+})();
+</script>
+{% endblock %}
