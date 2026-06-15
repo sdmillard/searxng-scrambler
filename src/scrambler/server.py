@@ -1303,6 +1303,21 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
         (bg_dir / filename).write_bytes(data)
         return jsonify({"url": f"/backgrounds/{filename}"})
 
+    @app.route("/opensearch.xml")
+    def opensearch_xml():
+        from flask import Response, request as _req
+        base = _req.host_url.rstrip("/")
+        title = config.prefs.get("appearance", {}).get("title", "Scrambler")
+        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>{title}</ShortName>
+  <Description>Privacy search — Tor-routed SearXNG</Description>
+  <Url type="text/html" template="{base}/search?q={{searchTerms}}"/>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Image width="16" height="16" type="image/svg+xml">{base}/favicon.ico</Image>
+</OpenSearchDescription>"""
+        return Response(xml.strip(), mimetype="application/opensearchdescription+xml")
+
     @app.route("/map-sw.js")
     def serve_map_sw():
         from flask import send_from_directory

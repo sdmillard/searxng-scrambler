@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ appearance.title }}{% endblock %}</title>
   <link rel="icon" href="{{ appearance.favicon_href }}">
+  <link rel="search" type="application/opensearchdescription+xml" title="{{ appearance.title }}" href="/opensearch.xml">
   {% if appearance.font_face_css %}
   <style>{{ appearance.font_face_css | safe }}</style>
   {% elif appearance.font_import_url %}
