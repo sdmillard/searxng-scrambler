@@ -2939,6 +2939,7 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 "loading_bg_url":        request.form.get("appearance_loading_bg_url", saved_app.get("loading_bg_url", "")).strip(),
                 "loading_bg_opacity":    float(request.form.get("appearance_loading_bg_opacity", saved_app.get("loading_bg_opacity", 1.0))),
                 "loading_bg_loop":       request.form.get("appearance_loading_bg_loop") == "1",
+                "loading_bg_in_live":    request.form.get("appearance_loading_bg_in_live") == "1",
                 "loading_quips": [
                     l.strip() for l in request.form.get("appearance_loading_quips", "").splitlines()
                     if l.strip()
@@ -2990,6 +2991,7 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 "transit_navitia_key": request.form.get("transit_navitia_key", "").strip() or config.prefs.get("transit_navitia_key", ""),
                 "map_geolocation": request.form.get("map_geolocation", "hybrid") if request.form.get("map_geolocation") in ("off", "low", "high", "hybrid") else "hybrid",
                 "map_units": request.form.get("map_units", "metric") if request.form.get("map_units") in ("metric", "imperial") else "metric",
+                "map_coord_format": request.form.get("map_coord_format", "decimal") if request.form.get("map_coord_format") in ("decimal", "dms", "mgrs") else "decimal",
                 "map_routing": request.form.get("map_routing", "tor") if request.form.get("map_routing") in ("tor", "tor_fallback", "direct") else "tor",
                 "failover_timeout": max(3, min(120, int(request.form.get("failover_timeout", 12) or 12))),
                 "map_offline_method": request.form.get("map_offline_method", "none") if request.form.get("map_offline_method") in ("none", "service_worker", "pmtiles", "both") else "none",
@@ -3103,6 +3105,9 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
             server_port=config.prefs.get("server_port", 7777),
             semantic_available=semantic_available(),
             sem_install=install_status(),
+            is_linux=sys.platform == "linux",
+            is_windows=sys.platform == "win32",
+            is_mac=sys.platform == "darwin",
         )
 
     return app

@@ -71,11 +71,16 @@ def _doctor(args) -> None:
         tor_ok = True
     except OSError:
         pass
-    check(
-        "Tor (127.0.0.1:9050)",
-        tor_ok,
-        "" if tor_ok else "install tor and start it  →  sudo systemctl start tor",
-    )
+    if not tor_ok:
+        if sys.platform == "win32":
+            tor_hint = "download and install Tor Browser or Expert Bundle from torproject.org, then start tor.exe"
+        elif sys.platform == "darwin":
+            tor_hint = "install tor and start it  →  brew install tor && brew services start tor"
+        else:
+            tor_hint = "install tor and start it  →  sudo systemctl start tor"
+    else:
+        tor_hint = ""
+    check("Tor (127.0.0.1:9050)", tor_ok, tor_hint)
 
     # Core pip packages
     for pkg, import_name in [

@@ -1,14 +1,21 @@
+import base64
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-_APP_ID = "scrambler"
+_APP_ID   = "scrambler"
 _APP_NAME = "Scrambler"
-_ICON_DIR = Path.home() / ".local/share/icons/hicolor/scalable/apps"
+
+# Linux paths
+_ICON_DIR    = Path.home() / ".local/share/icons/hicolor/scalable/apps"
 _DESKTOP_DIR = Path.home() / ".local/share/applications"
-_BIN_DIR = Path.home() / ".local/bin"
+_BIN_DIR     = Path.home() / ".local/bin"
+
+# macOS paths
+_MAC_APPS_DIR   = Path.home() / "Applications"
+_MAC_APP_BUNDLE = _MAC_APPS_DIR / f"{_APP_NAME}.app"
 
 _DEFAULT_QUIPS = [
     "Connecting to Tor network...",
@@ -120,11 +127,98 @@ setTimeout(poll, 400);
 </html>"""
 
 
+# ── Windows helpers ───────────────────────────────────────────────────────────
+
+def _win_start_menu() -> Path:
+    appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+    return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+
+
+def _win_script_dir() -> Path:
+    localappdata = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    return Path(localappdata) / "Scrambler"
+
+
+def _win_launcher_script(config_dir: Path, port: int) -> str:
+    bin_path  = _bin()
+    log_path  = str(_win_script_dir() / "scrambler.log")
+    load_path = str(config_dir / "loading.html").replace("\\", "/")
+    return (
+        "import subprocess, socket, webbrowser, os\n"
+        "CREATE_NO_WINDOW = 0x08000000\n"
+        f"_BIN  = {repr(bin_path)}\n"
+        f"_URL  = {repr('file:///' + load_path)}\n"
+        f"_LOG  = {repr(log_path)}\n"
+        f"_PORT = {port}\n"
+        "\n"
+        "def _running():\n"
+        "    try:\n"
+        "        s = socket.create_connection(('127.0.0.1', _PORT), timeout=1)\n"
+        "        s.close(); return True\n"
+        "    except OSError:\n"
+        "        return False\n"
+        "\n"
+        "if not _running():\n"
+        "    os.makedirs(os.path.dirname(_LOG), exist_ok=True)\n"
+        "    with open(_LOG, 'a') as log:\n"
+        "        subprocess.Popen([_BIN, 'serve'], creationflags=CREATE_NO_WINDOW,\n"
+        "                         stdout=log, stderr=log)\n"
+        "\n"
+        "webbrowser.open(_URL)\n"
+    )
+
+
+def _win_create_shortcut(shortcut_path: Path, target: str, arguments: str) -> str | None:
+    ps = "\n".join([
+        "$ws = New-Object -ComObject WScript.Shell",
+        f'$s = $ws.CreateShortcut("{shortcut_path}")',
+        f'$s.TargetPath = "{target}"',
+        f'$s.Arguments = \'"{arguments}"\'',
+        f'$s.WorkingDirectory = "{Path.home()}"',
+        "$s.Save()",
+    ])
+    encoded = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+            capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode != 0:
+            return r.stderr.strip() or "PowerShell shortcut creation failed"
+        return None
+    except Exception as e:
+        return str(e)
+
+
+# ── Public interface ──────────────────────────────────────────────────────────
+
 def is_installed() -> bool:
+    if sys.platform == "win32":
+        return (_win_start_menu() / f"{_APP_NAME}.lnk").exists()
+    if sys.platform == "darwin":
+        return _MAC_APP_BUNDLE.exists()
     return (_DESKTOP_DIR / f"{_APP_ID}.desktop").exists()
 
 
 def create(config_dir: Path, appearance: dict | None = None) -> str | None:
+    if sys.platform == "win32":
+        return _create_windows(config_dir, appearance)
+    if sys.platform == "darwin":
+        return _create_mac(config_dir, appearance)
+    return _create_linux(config_dir, appearance)
+
+
+def remove() -> str | None:
+    if sys.platform == "win32":
+        return _remove_windows()
+    if sys.platform == "darwin":
+        return _remove_mac()
+    return _remove_linux()
+
+
+# ── Linux implementation ──────────────────────────────────────────────────────
+
+def _create_linux(config_dir: Path, appearance: dict | None = None) -> str | None:
     try:
         port = _port(config_dir)
         bin_path = _bin()
@@ -136,15 +230,12 @@ def create(config_dir: Path, appearance: dict | None = None) -> str | None:
         bg      = colors.get("--bg", "#0d1117")
         accent  = colors.get("--accent", "#5b9cf6")
 
-        # Icon
         _ICON_DIR.mkdir(parents=True, exist_ok=True)
         (_ICON_DIR / f"{_APP_ID}.svg").write_text(_icon_svg(favicon, bg, accent))
 
-        # Loading page
         loading_path = config_dir / "loading.html"
         loading_path.write_text(_loading_html(port, app))
 
-        # Launcher script
         _BIN_DIR.mkdir(parents=True, exist_ok=True)
         script = _BIN_DIR / f"{_APP_ID}-open"
         script.write_text(
@@ -156,7 +247,6 @@ def create(config_dir: Path, appearance: dict | None = None) -> str | None:
         )
         script.chmod(0o755)
 
-        # .desktop entry
         _DESKTOP_DIR.mkdir(parents=True, exist_ok=True)
         (_DESKTOP_DIR / f"{_APP_ID}.desktop").write_text(
             f"[Desktop Entry]\n"
@@ -186,7 +276,7 @@ def create(config_dir: Path, appearance: dict | None = None) -> str | None:
         return str(e)
 
 
-def remove() -> str | None:
+def _remove_linux() -> str | None:
     try:
         for path in [
             _DESKTOP_DIR / f"{_APP_ID}.desktop",
@@ -199,6 +289,101 @@ def remove() -> str | None:
             subprocess.run(["update-desktop-database", str(_DESKTOP_DIR)], capture_output=True, timeout=5)
         except Exception:
             pass
+        return None
+    except Exception as e:
+        return str(e)
+
+
+# ── macOS implementation ──────────────────────────────────────────────────────
+
+def _create_mac(config_dir: Path, appearance: dict | None = None) -> str | None:
+    try:
+        port = _port(config_dir)
+        bin_path = _bin()
+        app = appearance or {}
+
+        name = (app.get("title") or _APP_NAME).strip() or _APP_NAME
+
+        loading_path = config_dir / "loading.html"
+        loading_path.write_text(_loading_html(port, app))
+
+        macos_dir = _MAC_APP_BUNDLE / "Contents" / "MacOS"
+        macos_dir.mkdir(parents=True, exist_ok=True)
+
+        script = macos_dir / "scrambler-open"
+        script.write_text(
+            f'#!/bin/bash\n'
+            f'if ! pgrep -f "scrambler serve" > /dev/null 2>&1; then\n'
+            f'    nohup "{bin_path}" serve > /tmp/scrambler.log 2>&1 &\n'
+            f'fi\n'
+            f'open "file://{loading_path}"\n'
+        )
+        script.chmod(0o755)
+
+        (_MAC_APP_BUNDLE / "Contents" / "Info.plist").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"'
+            ' "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+            '<plist version="1.0"><dict>\n'
+            '    <key>CFBundleExecutable</key><string>scrambler-open</string>\n'
+            '    <key>CFBundleIdentifier</key><string>com.scrambler.app</string>\n'
+            f'    <key>CFBundleName</key><string>{name}</string>\n'
+            '    <key>CFBundleVersion</key><string>1.0</string>\n'
+            '    <key>LSUIElement</key><true/>\n'
+            '</dict></plist>\n'
+        )
+
+        return None
+    except Exception as e:
+        return str(e)
+
+
+def _remove_mac() -> str | None:
+    try:
+        if _MAC_APP_BUNDLE.exists():
+            import shutil
+            shutil.rmtree(_MAC_APP_BUNDLE)
+        return None
+    except Exception as e:
+        return str(e)
+
+
+# ── Windows implementation ────────────────────────────────────────────────────
+
+def _create_windows(config_dir: Path, appearance: dict | None = None) -> str | None:
+    try:
+        port = _port(config_dir)
+        app  = appearance or {}
+
+        loading_path = config_dir / "loading.html"
+        loading_path.write_text(_loading_html(port, app))
+
+        script_dir = _win_script_dir()
+        script_dir.mkdir(parents=True, exist_ok=True)
+        script_path = script_dir / "scrambler-open.pyw"
+        script_path.write_text(_win_launcher_script(config_dir, port))
+
+        pythonw = Path(sys.executable).parent / "pythonw.exe"
+        if not pythonw.exists():
+            pythonw = Path(sys.executable)
+
+        start_menu = _win_start_menu()
+        start_menu.mkdir(parents=True, exist_ok=True)
+        shortcut = start_menu / f"{_APP_NAME}.lnk"
+
+        return _win_create_shortcut(shortcut, str(pythonw), str(script_path))
+    except Exception as e:
+        return str(e)
+
+
+def _remove_windows() -> str | None:
+    try:
+        shortcut = _win_start_menu() / f"{_APP_NAME}.lnk"
+        if shortcut.exists():
+            shortcut.unlink()
+        script = _win_script_dir() / "scrambler-open.pyw"
+        if script.exists():
+            script.unlink()
         return None
     except Exception as e:
         return str(e)

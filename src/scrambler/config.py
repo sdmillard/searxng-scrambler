@@ -34,6 +34,7 @@ DEFAULT_APPEARANCE: dict = {
     "loading_bg_url":        "",
     "loading_bg_opacity":    1.0,
     "loading_bg_loop":       True,
+    "loading_bg_in_live":    False,
     "loading_quips":    [],
     "loading_bar_style": "crawl",
     "loading_indicator": "bar",    # non-live: "bar"|"console"|"none" / live: "tree"|"console"|"none"
@@ -100,6 +101,7 @@ DEFAULT_PREFS: dict = {
     "map_pmtiles_url": "",                 # URL to .pmtiles archive (used when method is pmtiles or both)
     "map_tile_routing": "tor",             # "tor" | "tor_fallback" | "direct" — how tiles are fetched server-side
     "map_units": "metric",                 # "metric" | "imperial"
+    "map_coord_format": "decimal",         # "decimal" | "dms" | "mgrs"
     "map_routing": "tor",                  # "tor" | "tor_fallback" | "direct" — geocoding + directions
     "failover_timeout": 12,                # seconds to wait on Tor before falling back (tor_fallback mode)
     "ai_provider": "",              # "anthropic" | "openai_compat" | "ollama" | ""
@@ -314,7 +316,7 @@ PROFILE_PREFS: frozenset = frozenset({
     # Map
     "map_tile_provider", "map_tile_custom_url",
     "route_provider", "route_custom_url", "route_transit_url",
-    "map_geolocation", "map_offline_method", "map_offline_behavior", "map_pmtiles_url", "map_units", "map_routing", "map_tile_routing",
+    "map_geolocation", "map_offline_method", "map_offline_behavior", "map_pmtiles_url", "map_units", "map_coord_format", "map_routing", "map_tile_routing",
     "failover_timeout",
     # AI (api keys never stored in profiles)
     "ai_provider", "ai_base_url", "ai_model", "ai_max_results",

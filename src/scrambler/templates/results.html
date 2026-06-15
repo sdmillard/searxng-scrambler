@@ -622,7 +622,9 @@
 
 {% block content %}
 {% set streaming = streaming | default(false) %}
+{% set _is_live_stream = streaming and (stream_mode | default('') in ('live', 'live_bare', 'live_console')) %}
 {% set _lbg = appearance.get('loading_bg_url', '') %}
+{% if not _is_live_stream or appearance.get('loading_bg_in_live', False) %}
 {% if _lbg %}
 {% set _lbg_low = _lbg | lower %}
 {% set _lbg_video = '.mp4' in _lbg_low or '.webm' in _lbg_low or '.mov' in _lbg_low or '.ogg' in _lbg_low %}
@@ -636,6 +638,7 @@
 {% endif %}
 {% else %}
 <div id="loading-bg" style="position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--bg);transition:opacity 0.9s ease"></div>
+{% endif %}
 {% endif %}
 <div class="results-search">
   <form action="/search" method="get" class="search-bar">
@@ -1785,32 +1788,32 @@ async function doAiFollowUp() {
 
   document.getElementById('ctx-from').addEventListener('click', () => {
     if (!ctxLatLon) return;
-    setRouteField('from', ctxLatLon.lat.toFixed(6) + ',' + ctxLatLon.lng.toFixed(6),
+    setRouteField('from', formatCoord(ctxLatLon.lat, ctxLatLon.lng),
                   ctxLatLon.lat, ctxLatLon.lng);
     hideCtxMenu();
   });
   document.getElementById('ctx-to').addEventListener('click', () => {
     if (!ctxLatLon) return;
-    setRouteField('to', ctxLatLon.lat.toFixed(6) + ',' + ctxLatLon.lng.toFixed(6),
+    setRouteField('to', formatCoord(ctxLatLon.lat, ctxLatLon.lng),
                   ctxLatLon.lat, ctxLatLon.lng);
     hideCtxMenu();
   });
   document.getElementById('ctx-add-stop').addEventListener('click', () => {
     if (!ctxLatLon) return;
-    addWaypointInput(ctxLatLon.lat.toFixed(6) + ',' + ctxLatLon.lng.toFixed(6), ctxLatLon.lat, ctxLatLon.lng);
+    addWaypointInput(formatCoord(ctxLatLon.lat, ctxLatLon.lng), ctxLatLon.lat, ctxLatLon.lng);
     switchTab('directions');
     hideCtxMenu();
   });
   document.getElementById('ctx-save-loc').addEventListener('click', () => {
     if (!ctxLatLon) return;
-    const dflt = ctxLatLon.lat.toFixed(5) + ', ' + ctxLatLon.lng.toFixed(5);
+    const dflt = formatCoord(ctxLatLon.lat, ctxLatLon.lng);
     const name = (prompt('Name this location:', dflt) || '').trim() || dflt;
     saveMapLocation(name, ctxLatLon.lat, ctxLatLon.lng, '');
     hideCtxMenu();
   });
   document.getElementById('ctx-copy').addEventListener('click', () => {
     if (!ctxLatLon) return;
-    navigator.clipboard && navigator.clipboard.writeText(ctxLatLon.lat.toFixed(6) + ',' + ctxLatLon.lng.toFixed(6));
+    navigator.clipboard && navigator.clipboard.writeText(formatCoord(ctxLatLon.lat, ctxLatLon.lng));
     hideCtxMenu();
   });
 
@@ -2189,6 +2192,49 @@ async function doAiFollowUp() {
   }
 
   const _mapUnits = {{ prefs.get('map_units', 'metric') | tojson }};
+  const _MAP_COORD_FMT = {{ prefs.get('map_coord_format', 'decimal') | tojson }};
+
+  function _latToDMS(deg, pos, neg) {
+    const d = Math.abs(deg), dd = Math.floor(d), rem = (d - dd) * 60;
+    const mm = Math.floor(rem), ss = ((rem - mm) * 60).toFixed(1);
+    return dd + '° ' + String(mm).padStart(2,'0') + '′ ' + String(ss).padStart(4,'0') + '″ ' + (deg >= 0 ? pos : neg);
+  }
+
+  function _latLngToMGRS(lat, lng) {
+    if (lat > 84 || lat < -80) return lat.toFixed(5) + ', ' + lng.toFixed(5);
+    const a = 6378137.0, f = 1/298.257223563;
+    const e2 = 2*f - f*f, ep2 = e2/(1-e2), k0 = 0.9996;
+    const latR = lat * Math.PI/180, lngR = lng * Math.PI/180;
+    const zone = Math.floor((lng + 180)/6) + 1;
+    const lngOrigin = ((zone-1)*6 - 180 + 3) * Math.PI/180;
+    const sinLat = Math.sin(latR), cosLat = Math.cos(latR), tanLat = Math.tan(latR);
+    const N = a / Math.sqrt(1 - e2*sinLat*sinLat);
+    const T = tanLat*tanLat, C = ep2*cosLat*cosLat, A = cosLat*(lngR - lngOrigin);
+    const M = a*((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256)*latR
+               - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024)*Math.sin(2*latR)
+               + (15*e2*e2/256 + 45*e2*e2*e2/1024)*Math.sin(4*latR)
+               - (35*e2*e2*e2/3072)*Math.sin(6*latR));
+    let easting = k0*N*(A + (1-T+C)*A*A*A/6 + (5-18*T+T*T+72*C-58*ep2)*A*A*A*A*A/120) + 500000;
+    let northing = k0*(M + N*tanLat*(A*A/2 + (5-T+9*C+4*C*C)*A*A*A*A/24 + (61-58*T+T*T+600*C-330*ep2)*A*A*A*A*A*A/720));
+    if (lat < 0) northing += 10000000;
+    const bands = 'CDEFGHJKLMNPQRSTUVWXX';
+    const band = bands[Math.min(Math.floor((lat+80)/8), bands.length-1)];
+    const colSets = ['ABCDEFGH','JKLMNPQR','STUVWXYZ'];
+    const rowSets = ['ABCDEFGHJKLMNPQRSTUV','FGHJKLMNPQRSTUVABCDE'];
+    const e100k = Math.floor(easting/100000), n100k = Math.floor(northing/100000);
+    const col = colSets[(zone-1)%3][e100k-1] || '?';
+    const row = rowSets[(zone-1)%2][n100k%20];
+    const ep = Math.floor(easting%100000).toString().padStart(5,'0');
+    const np = Math.floor(northing%100000).toString().padStart(5,'0');
+    return zone + band + ' ' + col + row + ' ' + ep + ' ' + np;
+  }
+
+  function formatCoord(lat, lng) {
+    if (_MAP_COORD_FMT === 'dms') return _latToDMS(lat,'N','S') + ', ' + _latToDMS(lng,'E','W');
+    if (_MAP_COORD_FMT === 'mgrs') return _latLngToMGRS(lat, lng);
+    return lat.toFixed(6) + ', ' + lng.toFixed(6);
+  }
+
   function formatDist(m) {
     if (_mapUnits === 'imperial') {
       const ft = m * 3.28084;
@@ -2555,7 +2601,7 @@ async function doAiFollowUp() {
         locsEl.innerHTML = locs.map((loc, i) => {
           const icon  = loc.icon  || '⭐';
           const color = loc.color || accentColor;
-          const coords = loc.lat.toFixed(5) + ', ' + loc.lon.toFixed(5);
+          const coords = formatCoord(loc.lat, loc.lon);
           return '<div class="mp-saved-item mp-saved-item--stacked" data-loc-idx="' + i + '" data-loc-name="' + (loc.name||'').replace(/"/g,'&quot;') + '" data-loc-lat="' + loc.lat + '" data-loc-lon="' + loc.lon + '" data-loc-icon="' + icon.replace(/"/g,'&quot;') + '" data-loc-color="' + color + '">'
           + '<span style="font-size:16px;flex-shrink:0">' + icon + '</span>'
           + '<span style="flex:1;min-width:0">'

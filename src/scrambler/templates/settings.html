@@ -788,6 +788,14 @@
         <option value="imperial" {% if _mu == 'imperial' %}selected{% endif %}>Imperial — feet and miles</option>
       </select>
 
+      {% set _mcf = prefs.get('map_coord_format', 'decimal') %}
+      <label for="map_coord_format" style="margin-top:20px">Coordinate format</label>
+      <select id="map_coord_format" name="map_coord_format">
+        <option value="decimal" {% if _mcf == 'decimal' %}selected{% endif %}>Decimal degrees — 40.712800, -74.006000</option>
+        <option value="dms"     {% if _mcf == 'dms'     %}selected{% endif %}>DMS — 40° 42′ 46″ N, 74° 00′ 22″ W</option>
+        <option value="mgrs"    {% if _mcf == 'mgrs'    %}selected{% endif %}>MGRS — 18TWL 84182 14600</option>
+      </select>
+
       {% set _mgeo = prefs.get('map_geolocation', 'hybrid') %}
       <label for="map_geolocation" style="margin-top:20px">My Location accuracy</label>
       <select id="map_geolocation" name="map_geolocation">
@@ -1555,6 +1563,10 @@
             <input type="checkbox" id="appearance_loading_bg_loop" name="appearance_loading_bg_loop" value="1" {% if appearance.get('loading_bg_loop', True) %}checked{% endif %}>
             <label for="appearance_loading_bg_loop" style="margin:0;font-weight:400;font-size:13px;color:var(--muted)">Loop video</label>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input type="checkbox" id="appearance_loading_bg_in_live" name="appearance_loading_bg_in_live" value="1" {% if appearance.get('loading_bg_in_live', False) %}checked{% endif %}>
+            <label for="appearance_loading_bg_in_live" style="margin:0;font-weight:400;font-size:13px;color:var(--muted)">Show in live mode</label>
+          </div>
         </div>
 
       </div>
@@ -1931,19 +1943,33 @@
       </div>
       <p class="hint">Default is 7777. Changes take effect after restarting Scrambler.</p>
 
+      {% if is_linux or is_windows or is_mac %}
       <label style="margin-top:20px;display:block">Desktop launcher</label>
       <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
         <button type="button" class="secondary" id="launcher-btn" onclick="toggleLauncher()">Checking…</button>
         <span id="launcher-status" class="hint" style="margin:0"></span>
       </div>
+      {% if is_windows %}
+      <p class="hint" style="margin-top:8px">Adds a shortcut to your Start Menu — no terminal needed. The name comes from your current theme, so reinstall after switching themes to update it.</p>
+      {% elif is_mac %}
+      <p class="hint" style="margin-top:8px">Adds Scrambler.app to ~/Applications so you can launch it from Spotlight or Finder — no terminal needed. The name comes from your current theme, so reinstall after switching themes to update it.</p>
+      {% else %}
       <p class="hint" style="margin-top:8px">Adds an icon to your app launcher — no terminal needed. The icon and name come from your current theme, so reinstall after switching themes to update it.</p>
+      {% endif %}
 
       <label style="margin-top:20px;display:block">Start on login</label>
       <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
         <button type="button" class="secondary" id="autostart-btn" onclick="toggleAutostart()">Checking…</button>
         <span id="autostart-status" class="hint" style="margin:0"></span>
       </div>
+      {% if is_windows %}
+      <p class="hint" style="margin-top:8px">Adds Scrambler to Windows startup via the registry so it starts automatically when you log in.</p>
+      {% elif is_mac %}
+      <p class="hint" style="margin-top:8px">Registers a launchd user agent so Scrambler starts automatically when you log in.</p>
+      {% else %}
       <p class="hint" style="margin-top:8px">Registers a systemd user service so Scrambler starts automatically when you log in.</p>
+      {% endif %}
+      {% endif %}
 
       <label style="margin-top:20px;display:block">Restart server</label>
       <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
@@ -2592,6 +2618,7 @@ function readCurrentAppearance() {
     loading_bg_url:          val('appearance_loading_bg_url'),
     loading_bg_opacity:      fval('appearance_loading_bg_opacity', 1.0),
     loading_bg_loop:         !!(document.getElementById('appearance_loading_bg_loop') || {}).checked,
+    loading_bg_in_live:      !!(document.getElementById('appearance_loading_bg_in_live') || {}).checked,
     background_audio_url:    val('appearance_background_audio_url'),
     background_audio_volume: fval('appearance_background_audio_volume', 0.5),
     background_audio_loop:   val('appearance_background_audio_loop', '1'),
@@ -2649,6 +2676,10 @@ function applyTheme(data) {
   if (data.loading_bg_loop !== undefined) {
     var lblCb = document.getElementById('appearance_loading_bg_loop');
     if (lblCb) lblCb.checked = !!data.loading_bg_loop;
+  }
+  if (data.loading_bg_in_live !== undefined) {
+    var lbilCb = document.getElementById('appearance_loading_bg_in_live');
+    if (lbilCb) lbilCb.checked = !!data.loading_bg_in_live;
   }
   if (data.loading_quips !== undefined) {
     var el = document.getElementById('appearance_loading_quips');
