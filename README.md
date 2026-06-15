@@ -194,6 +194,12 @@ scrambler discover           Browse and benchmark public SearXNG instances
 
 ---
 
+## Support
+
+[![Redistribute your wealth to me](beg-button.png)](https://ko-fi.com/sdmillard)
+
+---
+
 ## License
 
 AGPL-3.0-or-later. If you run a modified version as a service, you must publish the source.
