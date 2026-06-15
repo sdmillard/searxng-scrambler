@@ -78,7 +78,7 @@ pip install 'searxng-scrambler[ai]'
 Or from source:
 
 ```bash
-git clone https://github.com/yourusername/searxng-scrambler
+git clone https://github.com/sdmillard/searxng-scrambler
 cd searxng-scrambler
 pip install -e .
 ```
