@@ -1,4 +1,5 @@
 A little about me before reading, I AM NOT A DEVELOPER. I am a political science major who doesn't know jack about coding, I just happen to, for some reason, have, what I think to be, a solid understanding of data privacy routing and wanted to do my part to better searxng as i am a user. I vibe coded quite literally every line of this with claude code over a couple days, this is more of a proof of concept that I think some capable computer nerds can actually bring to fruition. HOWEVER, it should be acceptable to use in its current state, I even use it myself. 
+Also I made this on Linux, everything should work except for anything that touches the desktop, so probably not the autostart or the icon intallation, but if you're savvy go ahead and try your luck. The one update I do will probably be getting that to happen.
 
 # Scrambler
 
