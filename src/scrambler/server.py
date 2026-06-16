@@ -531,6 +531,19 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
 
     _start_ap_scheduler(config, config_dir, selector)
 
+    from . import updater as _updater
+    def _do_restart():
+        import os, shlex, subprocess, threading as _th
+        exe = sys.executable
+        cmd = " ".join(shlex.quote(a) for a in [exe] + sys.argv)
+        shell = f"sleep 0.6 && exec {cmd}"
+        def _r():
+            import time as _t; _t.sleep(0.2)
+            subprocess.Popen(["bash", "-c", shell], start_new_session=True)
+            os._exit(0)
+        _th.Thread(target=_r, daemon=True).start()
+    _updater.start_scheduler(config, _do_restart)
+
     if config.instances:
         threading.Thread(
             target=_refresh_engine_native_categories,
@@ -1140,17 +1153,22 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
             except Exception as e:
                 return render_template("reader.html", url=url, title=url, content=None, error=str(e))
 
-        if _get_routing(config.prefs) == "direct":
+        reader_routing = config.prefs.get("reader_routing", "tor_fallback")
+
+        if reader_routing == "direct" and _get_routing(config.prefs) == "direct":
+            tor_proxies = None
+        elif _get_routing(config.prefs) == "direct" and reader_routing != "direct":
             return render_template("reader.html", url=url, title=url,
                                    content=None,
                                    error="Reader mode requires Tor routing to protect your IP. "
                                          "Enable Tor in Settings, then try again.")
+        else:
+            cred = circuits.get_credential()
+            tor_proxies = {
+                "http":  f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
+                "https": f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
+            }
 
-        cred = circuits.get_credential()
-        proxies = {
-            "http":  f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
-            "https": f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
-        }
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:115.0) Gecko/20100101 Firefox/115.0",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -1158,9 +1176,16 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
             "DNT": "1",
         }
 
+        _using_tor = tor_proxies is not None and reader_routing != "direct"
+
         try:
-            resp = _req.get(url, proxies=proxies, headers=headers,
+            resp = _req.get(url, proxies=tor_proxies, headers=headers,
                             timeout=20, allow_redirects=True, stream=True)
+
+            if resp.status_code in (403, 429) and _using_tor and reader_routing == "tor_fallback":
+                resp = _req.get(url, proxies=None, headers=headers,
+                                timeout=20, allow_redirects=True, stream=True)
+                _using_tor = False
 
             if resp.status_code == 403:
                 return render_template("reader.html", url=url, title=url, content=None,
@@ -1170,16 +1195,8 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 return render_template("reader.html", url=url, title=url, content=None,
                                        error="Page not found (404).")
             if resp.status_code == 429:
-                cred = circuits.get_credential()
-                proxies = {
-                    "http":  f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
-                    "https": f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
-                }
-                resp = _req.get(url, proxies=proxies, headers=headers,
-                                timeout=20, allow_redirects=True, stream=True)
-                if resp.status_code == 429:
-                    return render_template("reader.html", url=url, title=url, content=None,
-                                           error="Rate limited (429). The site is throttling Tor exit nodes — try again in a moment.")
+                return render_template("reader.html", url=url, title=url, content=None,
+                                       error="Rate limited (429). The site is throttling requests — try again in a moment.")
             if not resp.ok:
                 return render_template("reader.html", url=url, title=url, content=None,
                                        error=f"The site returned HTTP {resp.status_code}. "
@@ -1783,6 +1800,32 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
             subprocess.Popen(["bash", "-c", shell], start_new_session=True)
             os._exit(0)
         threading.Thread(target=_do, daemon=True).start()
+        return jsonify({"ok": True})
+
+    @app.route("/api/update/check")
+    def api_update_check():
+        from flask import jsonify
+        from . import updater as _upd
+        return jsonify(_upd.check())
+
+    @app.route("/api/update/apply", methods=["POST"])
+    def api_update_apply():
+        import os, shlex, subprocess, threading as _th
+        from flask import jsonify
+        from . import updater as _upd
+        if _upd.status.get("updating"):
+            return jsonify({"ok": False, "error": "Update already in progress"})
+        ok, out = _upd.apply()
+        if not ok:
+            return jsonify({"ok": False, "error": out})
+        exe  = sys.executable
+        cmd  = " ".join(shlex.quote(a) for a in [exe] + sys.argv)
+        shell = f"sleep 0.8 && exec {cmd} >> /tmp/scrambler.log 2>&1"
+        def _restart():
+            import time; time.sleep(0.3)
+            subprocess.Popen(["bash", "-c", shell], start_new_session=True)
+            os._exit(0)
+        _th.Thread(target=_restart, daemon=True).start()
         return jsonify({"ok": True})
 
     @app.route("/api/dearrow")
@@ -3040,8 +3083,11 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 "freshness_boost": request.form.get("freshness_boost") == "1",
                 "fuzzy_dedup": request.form.get("fuzzy_dedup") == "1",
                 "reader_mode": request.form.get("reader_mode", "off") if request.form.get("reader_mode") in ("off", "both", "reader") else "off",
+                "reader_routing": request.form.get("reader_routing", "tor_fallback") if request.form.get("reader_routing") in ("tor", "tor_fallback", "direct") else "tor_fallback",
                 "thumbnail_proxy": request.form.get("thumbnail_proxy", "direct") if request.form.get("thumbnail_proxy") in ("direct", "tor", "tor_fallback") else "direct",
                 "tab_categories": _parse_tab_categories(request.form.get("tab_categories", "")),
+                "auto_update": request.form.get("auto_update", "off") if request.form.get("auto_update") in ("off", "startup", "interval") else "off",
+                "auto_update_interval": max(5, int(request.form.get("auto_update_interval", config.prefs.get("auto_update_interval", 60)) or 60)),
                 "autopick_schedule": request.form.get("autopick_schedule", config.prefs.get("autopick_schedule", "never")),
                 "autopick_interval": max(1, int(request.form.get("autopick_interval", config.prefs.get("autopick_interval", 60)) or 60)),
                 "autopick_count":    max(1, min(100, int(request.form.get("autopick_count", config.prefs.get("autopick_count", 5)) or 5))),
@@ -3099,8 +3145,9 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 circuits.start(config.tor_port, pool_size=_cw)
             else:
                 circuits.stop()
-            # wake scheduler so it picks up any schedule/interval change immediately
+            # wake schedulers so they pick up any schedule/interval change immediately
             _ap_wake.set()
+            from . import updater as _upd; _upd._wake.set()
             return redirect(url_for("settings"))
 
         from .ranker import semantic_available, install_status

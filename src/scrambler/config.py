@@ -88,6 +88,7 @@ DEFAULT_PREFS: dict = {
     "tab_categories": ["all", "general", "news", "images", "videos", "map", "music", "science", "it", "files", "social media"],
     "wayback_links": True,            # show archive.org link on each result
     "reader_mode": "both",           # "off" | "both" (direct + read badge) | "reader" (title → Tor)
+    "reader_routing": "tor_fallback", # "tor" | "tor_fallback" | "direct"
     "thumbnail_proxy": "direct",     # "direct" | "tor" | "tor_fallback"
     "map_tile_provider": "openstreetmap",  # "openstreetmap" | "carto_light" | "carto_dark" | "custom" | "none"
     "map_tile_custom_url": "",             # tile URL template used when map_tile_provider == "custom"
@@ -125,6 +126,8 @@ DEFAULT_PREFS: dict = {
     "domain_cap": 3,                 # max results per domain before overflow moves to end (0=off)
     "freshness_boost": False,        # blend publication date into ranking for temporal queries
     "fuzzy_dedup": True,             # normalize URLs before dedup (strips www, tracking params)
+    "auto_update": "off",            # "off" | "startup" | "interval"
+    "auto_update_interval": 60,      # minutes (used when auto_update == "interval")
     "autopick_schedule": "never",   # "never" | "boot" | "interval" | "search"
     "autopick_interval": 60,         # minutes (used when schedule == "interval")
     "autopick_count": 5,             # 1–100
@@ -321,6 +324,7 @@ PROFILE_PREFS: frozenset = frozenset({
     # AI (api keys never stored in profiles)
     "ai_provider", "ai_base_url", "ai_model", "ai_max_results",
     "ai_routing", "ai_system_prompt", "ai_avatar", "ai_user_avatar",
+    "reader_routing",
     "ai_use_jina", "jina_routing", "jina_reader",
     "ai_reranking", "ai_rerank_count", "ai_rerank_timing", "ai_rerank_on_ask",
     "ai_rerank_use_search_ai", "ai_rerank_provider", "ai_rerank_model",

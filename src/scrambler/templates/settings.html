@@ -643,12 +643,6 @@
       </div>
       <p class="hint">Adds a <strong>jina</strong> badge to each result that opens the page via <strong>r.jina.ai</strong> — clean markdown extraction, no cookies, no JS. Works regardless of Tor routing.</p>
 
-      <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="wayback_links" name="wayback_links" value="1" {% if prefs.get('wayback_links', True) %}checked{% endif %}>
-        <label for="wayback_links" style="margin:0;font-weight:400">Show Wayback Machine archive links on results</label>
-      </div>
-      <p class="hint">Adds an <strong>archive</strong> badge to each result linking to <strong>web.archive.org</strong> — lets you read a cached snapshot without hitting the live site. Useful for paywalls, dead links, and avoiding tracking. Always opens as a direct connection (Wayback Machine blocks Tor exit nodes).</p>
-
       {% set _jr = prefs.get('jina_routing', 'direct') %}
       <label for="jina_routing" style="margin-top:14px">Jina request routing</label>
       <select id="jina_routing" name="jina_routing">
@@ -663,6 +657,21 @@
              placeholder="{{ '•••• key set — leave blank to keep ••••' if prefs.get('jina_api_key') else 'paste API key here' }}"
              autocomplete="off" style="width:100%;box-sizing:border-box">
       <p class="hint">Without a key, Jina rate-limits requests and may return 403. Free keys available at <strong>jina.ai</strong> — 1M tokens/month on the free tier. Never stored in profiles or personalities.</p>
+
+      <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="wayback_links" name="wayback_links" value="1" {% if prefs.get('wayback_links', True) %}checked{% endif %}>
+        <label for="wayback_links" style="margin:0;font-weight:400">Show Wayback Machine archive links on results</label>
+      </div>
+      <p class="hint">Adds an <strong>archive</strong> badge to each result linking to <strong>web.archive.org</strong> — lets you read a cached snapshot without hitting the live site. Useful for paywalls, dead links, and avoiding tracking.</p>
+
+      {% set _rr = prefs.get('reader_routing', 'tor_fallback') %}
+      <label for="reader_routing" style="margin-top:14px">Wayback reader routing</label>
+      <select id="reader_routing" name="reader_routing">
+        <option value="tor_fallback" {% if _rr == 'tor_fallback' %}selected{% endif %}>Tor with fallback — try Tor first, fall back to direct on 403/429 (recommended)</option>
+        <option value="tor"          {% if _rr == 'tor'          %}selected{% endif %}>Tor only — fail if the site blocks Tor exit nodes</option>
+        <option value="direct"       {% if _rr == 'direct'       %}selected{% endif %}>Direct — never use Tor for reader requests</option>
+      </select>
+      <p class="hint">Wayback Machine and some sites rate-limit or block Tor exit nodes. Tor with fallback handles this automatically.</p>
       </div>
 
       <button type="button" class="collapse-hdr collapsed" onclick="toggleCollapse('routing-thumbs')">
@@ -1971,6 +1980,30 @@
       {% endif %}
       {% endif %}
 
+      {% set _au = prefs.get('auto_update', 'off') %}
+      <label style="margin-top:20px;display:block">Auto-update</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap">
+        <select id="auto_update" name="auto_update"
+                onchange="document.getElementById('au-interval-wrap').style.display=this.value==='interval'?'flex':'none'">
+          <option value="off"      {% if _au == 'off'      %}selected{% endif %}>Off</option>
+          <option value="startup"  {% if _au == 'startup'  %}selected{% endif %}>On startup — check once when Scrambler launches</option>
+          <option value="interval" {% if _au == 'interval' %}selected{% endif %}>Every X minutes</option>
+        </select>
+      </div>
+      <span id="au-interval-wrap" style="display:{% if _au == 'interval' %}flex{% else %}none{% endif %};align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:8px">
+        Every
+        <input type="number" id="auto_update_interval" name="auto_update_interval"
+               min="5" max="10080" value="{{ prefs.get('auto_update_interval', 60) }}"
+               style="width:70px">
+        minutes
+      </span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button type="button" class="secondary" onclick="checkForUpdate()">Check for updates</button>
+        <button type="button" class="secondary" id="update-apply-btn" onclick="applyUpdate()" style="display:none">Update now</button>
+        <span id="update-status" class="hint" style="margin:0"></span>
+      </div>
+      <p class="hint" style="margin-top:8px">Checks PyPI for a newer version of searxng-scrambler and upgrades in place. When auto-update runs it also restarts automatically — you won't lose any settings.</p>
+
       <label style="margin-top:20px;display:block">Restart server</label>
       <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
         <button type="button" class="secondary" id="restart-btn" onclick="restartServer()">Restart now</button>
@@ -3227,6 +3260,54 @@ async function semInstall() {
 }
 
 // ── Restart ──────────────────────────────────────────────────
+
+async function checkForUpdate() {
+  const status = document.getElementById('update-status');
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Checking…';
+  try {
+    const r = await fetch('/api/update/check');
+    const d = await r.json();
+    if (d.error && !d.latest) { status.textContent = 'Error: ' + d.error; return; }
+    if (d.available) {
+      status.style.color = 'var(--accent)';
+      status.textContent = `Update available: ${d.current} → ${d.latest}`;
+      document.getElementById('update-apply-btn').style.display = '';
+    } else {
+      status.style.color = 'var(--url)';
+      status.textContent = `Up to date (${d.current})`;
+    }
+  } catch(e) { status.textContent = 'Error: ' + e.message; }
+}
+
+async function applyUpdate() {
+  const status = document.getElementById('update-status');
+  const btn    = document.getElementById('update-apply-btn');
+  btn.disabled = true;
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Updating… (this may take a minute)';
+  try {
+    const r = await fetch('/api/update/apply', {method:'POST'});
+    const d = await r.json();
+    if (!d.ok) {
+      status.style.color = 'var(--error)';
+      status.textContent = 'Update failed: ' + (d.error || 'unknown error');
+      btn.disabled = false;
+      return;
+    }
+    status.style.color = 'var(--muted)';
+    status.textContent = 'Updated! Waiting for server to come back…';
+    const poll = setInterval(async () => {
+      try {
+        await fetch('/');
+        clearInterval(poll);
+        status.style.color = 'var(--url)';
+        status.textContent = 'Back up — reloading…';
+        setTimeout(() => { location.href = location.pathname; }, 600);
+      } catch(_) {}
+    }, 700);
+  } catch(e) { status.textContent = 'Error: ' + e.message; btn.disabled = false; }
+}
 
 async function restartServer() {
   const btn    = document.getElementById('restart-btn');
