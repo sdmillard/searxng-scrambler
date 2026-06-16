@@ -74,7 +74,7 @@ def _parse_default_result(article, base_url: str) -> "Result | None":
 def _parse_image_result(article, base_url: str) -> "Result | None":
     # Title is in <span class="title">, NOT in <h3>
     title_el = article.select_one("span.title")
-    title = title_el.get_text(strip=True) if title_el else None
+    title = " ".join(title_el.get_text(separator=" ").split()) if title_el else None
 
     # Full-size image URL: outer <a href> links to result.img_src
     outer_a = article.find("a")
@@ -95,7 +95,7 @@ def _parse_image_result(article, base_url: str) -> "Result | None":
         thumbnail = _unwrap_proxy(_make_absolute(src, base_url)) or None
 
     snippet_el = article.select_one(".result-images-labels .result-content, p.result-content, .content")
-    snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+    snippet = " ".join(snippet_el.get_text(separator=" ").split()) if snippet_el else ""
 
     return Result(
         url=url,
@@ -120,7 +120,7 @@ def _extract_url(article) -> str | None:
 
 def _extract_title(article) -> str | None:
     a = article.select_one("h3 a")
-    return a.get_text(strip=True) if a else None
+    return " ".join(a.get_text(separator=" ").split()) if a else None
 
 
 def _extract_snippet(article) -> str:
