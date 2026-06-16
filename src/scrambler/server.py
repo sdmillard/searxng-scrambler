@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from flask import Flask, Response, redirect, render_template, request, stream_with_context, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, stream_with_context, url_for
 
 from .config import Config, DEFAULT_COLORS, load_config, load_instance_engines, load_themes, save_instance_engines, save_instances, save_prefs, save_themes, seed_themes, seed_search_profiles, load_ai_personalities, save_ai_personalities, AI_PERSONALITY_KEYS, load_map_data, save_map_data
 from . import circuits
