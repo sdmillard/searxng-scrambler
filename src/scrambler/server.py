@@ -1170,8 +1170,16 @@ def create_app(config_dir: Path, no_tor: bool = False) -> Flask:
                 return render_template("reader.html", url=url, title=url, content=None,
                                        error="Page not found (404).")
             if resp.status_code == 429:
-                return render_template("reader.html", url=url, title=url, content=None,
-                                       error="Rate limited (429). The site is throttling Tor exit nodes.")
+                cred = circuits.get_credential()
+                proxies = {
+                    "http":  f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
+                    "https": f"socks5h://{cred}:x@127.0.0.1:{config.tor_port}",
+                }
+                resp = _req.get(url, proxies=proxies, headers=headers,
+                                timeout=20, allow_redirects=True, stream=True)
+                if resp.status_code == 429:
+                    return render_template("reader.html", url=url, title=url, content=None,
+                                           error="Rate limited (429). The site is throttling Tor exit nodes — try again in a moment.")
             if not resp.ok:
                 return render_template("reader.html", url=url, title=url, content=None,
                                        error=f"The site returned HTTP {resp.status_code}. "
