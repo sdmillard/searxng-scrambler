@@ -642,6 +642,7 @@
 {% endif %}
 <div class="results-search">
   <form action="/search" method="get" class="search-bar">
+    <input type="hidden" name="cat" value="{{ active_cat }}">
     <div class="search-input-group">
       <select class="search-profile-cap" id="profile-cap" onchange="quickSwitchProfile(this.value)">
         <option value="">{% if active_profile %}{{ active_profile }}{% else %}Profile{% endif %}</option>
