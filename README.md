@@ -73,7 +73,7 @@ pip install searxng-scrambler
 To enable local AI reranking (semantic search, runs on your GPU/CPU, no API key needed):
 
 ```bash
-pip install 'searxng-scrambler[ai]'
+pip install "searxng-scrambler[ai]"
 ```
 
 > **Note:** The `[ai]` extra pulls in PyTorch and sentence-transformers (~1–5 GB depending on your platform). Skip it if you only want cloud-based AI via an API key.
